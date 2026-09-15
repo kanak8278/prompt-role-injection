@@ -26,16 +26,7 @@ stage () {
 stage ladder5_llama $PY scripts/eval_behavior.py --split pilot --model "$LLAMA"
 stage ladder5_qwen  $PY scripts/eval_behavior.py --split pilot --model "$QWEN"
 # The reuse test. Screened at the framing clause, the command span, and the decision position.
-# Qwen DOES exhibit the contrast (+8.45 nats, 100% of scenarios) -- an n=1 spot check
-# wrongly suggested otherwise, see notes/12. Both models get the reuse test.
 stage g5_reuse_llama $PY scripts/g5_localize.py --model "$LLAMA" \
   --n-pairs 30 --dtype fp32 --cond-a UQ --cond-b UR --span cue \
   --control-layers 4 --random-controls 2
 echo "=== [$(date +%H:%M:%S)] PIPELINE5 DONE" | tee -a "$LOG_DIR/pipeline5.log"
-
-# Appended after the n=1 correction: Qwen's UQ->UR contrast is +8.45 nats in 100% of
-# scenarios, so it gets the reuse test too.
-stage g5_reuse_qwen $PY scripts/g5_localize.py --model "$QWEN" \
-  --n-pairs 25 --dtype fp32 --cond-a UQ --cond-b UR --span cue \
-  --control-layers 4 --random-controls 2
-echo "=== [$(date +%H:%M:%S)] PIPELINE5b DONE" | tee -a "$LOG_DIR/pipeline5.log"

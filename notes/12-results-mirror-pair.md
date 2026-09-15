@@ -63,13 +63,27 @@ UR's 0.580 accuracy is imperfect — even with explicit authorisation the model 
 revised task 58% of the time — but the contrast is what the test needs, and it is enormous and
 unanimous.
 
-### Per-model limit, reported rather than worked around
+### Correction: Qwen does exhibit the contrast — an n=1 spot check misled me
 
-On **Qwen2.5-7B the command-first construction gives the authorized answer in *both*
-framings**, so Qwen does not exhibit this contrast with this wording and the reuse test runs on
-Llama only. Qwen appears simply unwilling to take up a command-first revision, which is
-consistent with it being the model that *also* declined the attack more often under
-intervention.
+I first wrote here that Qwen2.5-7B "does not exhibit this contrast", based on a **single
+example** where both framings returned the authorized answer. The 200-scenario run contradicts
+that and the earlier claim was wrong:
+
+| Qwen2.5-7B, pilot, 200 scenarios | accuracy | mean margin |
+| --- | --- | --- |
+| UR (authorised) | 0.155 | −5.01 |
+| UQ (disavowed) | 0.985 | −13.46 |
+| **UQ→UR margin shift** | | **+8.453** [8.10, 8.82], **100% of scenarios** |
+
+So the contrast is present on **both** models and is unanimous on both: **+9.04 (Llama) and
++8.45 (Qwen), positive in 100% of 200 scenarios each.** What the spot check actually caught is
+that Qwen's UR *accuracy* is low (0.155) — it rarely takes the revised task all the way to the
+output even when authorised — while its internal preference still moves by 8.45 nats. That is
+the same margin-versus-output dissociation this project has run into repeatedly, and it is
+exactly why §9 insists on reporting both.
+
+Recording the error rather than quietly fixing it: a one-example check is not evidence about a
+distribution, and it very nearly removed a model from the project's decisive test.
 
 ## Why this matters for the defense result
 
