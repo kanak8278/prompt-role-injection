@@ -85,6 +85,72 @@ exactly why §9 insists on reporting both.
 Recording the error rather than quietly fixing it: a one-example check is not evidence about a
 distribution, and it very nearly removed a model from the project's decisive test.
 
+## The reuse test: the mechanism is shared, and the gate is doing all the work
+
+Llama-3.1-8B, 30 aligned pairs (0 excluded), fp32. Baseline UQ→UR = **+9.38 mean, +9.33
+median, positive in 100% of pairs**. Median fraction of the effect recovered by patching:
+
+| block | **framing clause** | command | decision |
+| ---: | ---: | ---: | ---: |
+| 0 | **1.00** | **0.00** | 0.00 |
+| 8 | 0.90 | **0.00** | 0.00 |
+| 10 | 0.80 | **0.00** | −0.04 |
+| 12 | 0.73 | **0.00** | 0.01 |
+| **14** | **0.45** | **0.00** | **0.36** |
+| 16 | 0.10 | **0.00** | 0.47 |
+| 22 | 0.07 | **0.00** | 0.76 |
+| 30 | 0.02 | **0.00** | **0.97** |
+
+Side by side with the tool-channel instruction contrast on the same model:
+
+| | **UQ→UR** (legitimate, user channel) | **M→B** (attack, tool channel) |
+| --- | --- | --- |
+| span-resident through | block ~12 (0.73) | block ~12 (0.81) |
+| crossover | **blocks 14–16** | **blocks 16–18** |
+| decision-position takeover | 0.97 by block 30 | 0.88 by block 28 |
+
+**The two profiles are the same shape at the same depths.** Instruction information is held in
+its own span for roughly the first 40–50% of the stack and then hands off to the decision
+position — and this is true whether the instruction is a legitimate revision from the genuine
+user or an injected imperative inside tool output. **There is no depth at which one is present
+and the other absent.**
+
+So the answer to §10's question is: **the computations are shared.** A representational
+intervention aimed at tool-borne instruction-ness is aimed at the same machinery that carries
+legitimate user instructions, at the same depths.
+
+### Which means the defense's selectivity is entirely spatial
+
+This resolves the rest of the project into one statement. The source-gated projection preserved
+U perfectly (1.000 → 1.000 Llama, 0.950 → 0.950 Qwen) **not because it distinguishes legitimate
+from illegitimate instructions — it cannot — but because it never looks at the legitimate
+channel.** Selectivity comes from the provenance gate, not from feature separability.
+
+Three things that previously looked unrelated now follow from this:
+
+1. **Llama's Q cost (−7.5 to −17.5 points) was unavoidable by this method.** Q's capability —
+   recognising the instruction well enough to quote it — lives *inside* the gated span, so a
+   spatial gate cannot spare it. Everything the gate could protect, it protected perfectly.
+2. **An *ungated* version of this intervention should damage legitimate instruction following**,
+   which is exactly what the published attempt reported: a role-conflict steering vector that
+   "surprisingly amplif[ied] instruction following in a role-agnostic way". Shared machinery
+   plus no gate equals a general obedience knob.
+3. **The architectural lesson is the one the source paper asked for and did not supply.** It
+   wrote that "robust defense requires boundaries that survive into representation". Our
+   measurement says the boundary is *not* in the representation — instruction-ness is one
+   feature regardless of channel — so the boundary has to be imposed from outside, by
+   provenance metadata the serving stack already has. That is a concrete, falsifiable answer to
+   its open question, and it is the opposite of what the role-confusion framing predicted.
+
+### An internal consistency check worth noting
+
+The **command column is exactly 0.00 at every one of 32 blocks.** That is required and
+reassuring: the command sentence *precedes* the framing clause in this construction, and
+attention is causal, so command-position activations are bitwise identical between UQ and UR.
+Patching identical values must yield exactly zero. Getting exactly zero across 32 blocks
+confirms both the causal-masking reasoning and the span bookkeeping — the same check that, in
+its accidental form, invalidated the first random-position control.
+
 ## Why this matters for the defense result
 
 Two of the project's findings now have to be read together.
