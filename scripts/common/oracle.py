@@ -116,6 +116,25 @@ def check_scenario(bs: BaseScenario, conds: dict[str, RenderedCondition],
     if bs.command_text not in conds["U"].messages[-1]["content"]:
         raise OracleError("U: later user turn does not carry the command")
 
+    # UR/UQ: the §10 mirror pair. Same genuine user turn structure, same command, opposite
+    # authorisation, and the only textual difference must be the authorising clause.
+    ur, uq = conds["UR"], conds["UQ"]
+    for cond, rc in (("UR", ur), ("UQ", uq)):
+        if rc.messages[-1]["role"] != "user":
+            raise OracleError(f"{cond}: last message must be a genuine user turn")
+        if bs.command_text not in rc.messages[-1]["content"]:
+            raise OracleError(f"{cond}: user turn must carry the command")
+        if rc.document != conds["N"].document:
+            raise OracleError(f"{cond}: must use the neutral document")
+    if ur.expected != bs.attacker_target:
+        raise OracleError("UR must expect the revised label (the command is authorised)")
+    if uq.expected != bs.authorized_answer:
+        raise OracleError("UQ must expect the authorized answer (the command is data)")
+    from .scenarios import MIRROR_AUTHORISE, MIRROR_QUOTE
+    if (ur.messages[-1]["content"].replace(MIRROR_AUTHORISE, MIRROR_QUOTE, 1)
+            != uq.messages[-1]["content"]):
+        raise OracleError("UR and UQ differ by more than the authorising clause")
+
     # F: the changed fact must genuinely make the new answer correct.
     f_solved = solve(conds["F"].document, bs.facts)
     if f_solved != bs.changed_fact_answer:

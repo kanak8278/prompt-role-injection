@@ -280,7 +280,7 @@ def main():
 
     # --- summarise per condition, never pooled (§9, §13) --------------------------------
     summary = {}
-    for cond in ("N", "C", "M", "B", "P", "S", "U", "F", "Q"):
+    for cond in ("N", "C", "M", "B", "P", "S", "U", "UR", "UQ", "F", "Q"):
         rs = [r for r in results if r["condition"] == cond]
         if not rs:
             continue
@@ -312,7 +312,7 @@ def main():
         by_cond_sid.setdefault(r["condition"], {})[r["scenario_id"]] = r
     ladder = {}
     for a, b in (("N", "C"), ("C", "M"), ("M", "B"), ("N", "B"),
-                 ("B", "P"), ("B", "S"), ("P", "S")):
+                 ("B", "P"), ("B", "S"), ("P", "S"), ("UQ", "UR")):
         ma, mb = by_cond_sid.get(a, {}), by_cond_sid.get(b, {})
         sids = sorted(ma.keys() & mb.keys())
         if not sids:

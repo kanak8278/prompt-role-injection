@@ -50,6 +50,11 @@ LOCATIONS = ("cue", "command", "decision")
 # For a C/M/B contrast there is no cue and no separate command: the whole differing region is
 # the single length-matched "insert" span. Screened locations adapt accordingly.
 LOCATIONS_INSERT = ("insert", "decision")
+# For the §10 mirror pair (UQ vs UR) the differing region is the authorising clause in the
+# genuine user turn; the command sentence itself is byte-identical and position-aligned, so the
+# screened sites are the command span and the decision position.
+LOCATIONS_COMMAND = ("command", "decision")
+SCREENED = {"cue": LOCATIONS, "insert": LOCATIONS_INSERT, "command": LOCATIONS_COMMAND}
 
 
 def aligned_pairs(tok, model_name, split, n_pairs, max_scan=400,
@@ -107,7 +112,7 @@ def main():
     ap.add_argument("--cond-a", default="P", help="clean/donor condition")
     ap.add_argument("--cond-b", default="S", help="corrupt/receiving condition")
     ap.add_argument("--span", default="cue",
-                    help="which span must align and is screened: cue | insert")
+                    help="which span must align and is screened: cue | insert | command")
     args = ap.parse_args()
 
     dtype = torch.float32 if args.dtype == "fp32" else torch.bfloat16
@@ -147,10 +152,10 @@ def main():
                           "task_family": bs.task_family})
 
         # positions are shared: the pair is aligned, so spans coincide by construction
-        locs = LOCATIONS if args.span == "cue" else LOCATIONS_INSERT
+        locs = SCREENED[args.span]
         pos_of = {loc: site_positions(rS, loc) for loc in locs}
         body_lo, body_hi = rS.spans["tool_body"]
-        key = "cue" if args.span == "cue" else "insert"
+        key = args.span
         cue_lo, cue_hi = rS.spans[key]
         cmd_lo, cmd_hi = rS.spans.get("command", rS.spans[key])
         # Candidate positions for the matched random control.
@@ -247,7 +252,7 @@ def main():
         return e
 
     by_site = {}
-    screened = LOCATIONS if args.span == "cue" else LOCATIONS_INSERT
+    screened = SCREENED[args.span]
     for L in all_layers:
         for loc in screened:
             sel = [r for r in rows if r["layer"] == L and r["location"] == loc]
