@@ -37,9 +37,9 @@ stage g4_qwen  $PY scripts/g4_instrumentation.py \
 
 # 4. Defense: fitted on discovery, strength chosen on validation, then held-out confirmation.
 stage g7_validation  $PY scripts/g7_defense.py \
-  --model meta-llama/Llama-3.1-8B-Instruct --eval-split validation --n-scen 40
+  --model meta-llama/Llama-3.1-8B-Instruct --eval-split validation --n-scen 40 --layers 10,11,12,13
 stage g7_heldout_wd  $PY scripts/g7_defense.py \
-  --model meta-llama/Llama-3.1-8B-Instruct --eval-split heldout_wd --n-scen 40
+  --model meta-llama/Llama-3.1-8B-Instruct --eval-split heldout_wd --n-scen 40 --layers 10,11,12,13
 
 # 5. Transfer: held-out cue families (no literal "user" token) and the task-transfer split.
 stage ladder_heldout_cue   $PY scripts/eval_behavior.py \

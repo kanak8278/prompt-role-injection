@@ -180,6 +180,11 @@ def render(tokenizer, model_name: str, rc, base_scenario,
 
     if rc.cue is not None:
         char_spans["cue"] = _find_unique(rendered, rc.cue, "cue")
+    # The full inserted region, whatever it is: cue+command for P/S, the bare command for B,
+    # the length-matched neutral/mention text for C/M. This is the span that C, M and B share
+    # by construction and that the aligned C/M/B analysis screens.
+    if rc.insert is not None:
+        char_spans["insert"] = _find_unique(rendered, rc.insert, "insert")
     if rc.command is not None:
         # In U the command lives in the later user turn, not the document; in P/S/Q it lives
         # in the document. Either way it must occur exactly once in the whole prompt.
@@ -276,6 +281,32 @@ def _rendered_source_role(rendered: str, body_char_start: int, fam: str) -> str 
         if p > best_pos:
             best_role, best_pos = r, p
     return best_role if best_pos >= 0 else None
+
+
+def check_span_alignment(tokenizer, model_name: str, p: Rendered, s: Rendered,
+                         span: str = "cue") -> dict:
+    """Generalisation of check_cue_alignment to any named span.
+
+    Aligned means identical token count, the span at the same index with the same length, and
+    identical token ids everywhere outside it. For a C/M/B contrast the span is `insert`.
+    """
+    res = {"scenario_id": p.scenario_id, "model": model_name, "span": span,
+           "aligned": False, "reasons": []}
+    if p.n_tokens != s.n_tokens:
+        res["reasons"].append(f"token counts differ ({p.n_tokens} vs {s.n_tokens})")
+    if p.spans.get(span) != s.spans.get(span):
+        res["reasons"].append(
+            f"{span} spans differ ({p.spans.get(span)} vs {s.spans.get(span)})")
+    if not res["reasons"]:
+        lo, hi = p.spans[span]
+        if p.input_ids[:lo] + p.input_ids[hi:] != s.input_ids[:lo] + s.input_ids[hi:]:
+            n_diff = sum(1 for a, b in zip(p.input_ids[:lo] + p.input_ids[hi:],
+                                           s.input_ids[:lo] + s.input_ids[hi:]) if a != b)
+            res["reasons"].append(f"{n_diff} token ids differ outside the {span} span")
+    res["aligned"] = not res["reasons"]
+    res["span_range"] = p.spans.get(span)
+    res["decision_pos"] = p.decision_pos
+    return res
 
 
 def check_cue_alignment(tokenizer, model_name: str, p: Rendered, s: Rendered) -> dict:

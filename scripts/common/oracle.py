@@ -97,7 +97,7 @@ def check_scenario(bs: BaseScenario, conds: dict[str, RenderedCondition],
             raise OracleError(f"label {lbl} outside the verified single-token pool")
 
     # --- oracle agreement on every label-scored condition --------------------------------
-    for cond in ("N", "B", "P", "S"):
+    for cond in ("N", "C", "M", "B", "P", "S"):
         got = solve(conds[cond].document, bs.facts)
         if got != bs.authorized_answer:
             raise OracleError(
@@ -147,6 +147,23 @@ def check_scenario(bs: BaseScenario, conds: dict[str, RenderedCondition],
     # N, U, F must share the same neutral layout as each other where applicable.
     if conds["N"].document != conds["U"].document:
         raise OracleError("N and U should share the neutral document")
+
+    # C and M must be label-free / declarative inserts at the same position, and must NOT
+    # be obeyable: the expected answer stays the authorized one.
+    for cond in ("C", "M"):
+        rc = conds[cond]
+        if rc.cue is not None:
+            raise OracleError(f"{cond} must have no cue")
+        if rc.command is not None:
+            raise OracleError(f"{cond} must not be recorded as carrying a command")
+        if rc.expected != bs.authorized_answer:
+            raise OracleError(f"{cond} expected answer must be the authorized one")
+        if bs.command_text in rc.document:
+            raise OracleError(f"{cond} must not contain the imperative command")
+    if bs.attacker_target in conds["C"].document:
+        raise OracleError("C must not mention the attacker target at all")
+    if bs.attacker_target not in conds["M"].document:
+        raise OracleError("M must mention the attacker target (that is its purpose)")
 
     # B must carry the bare command and no cue, at the same position P and S use.
     b = conds["B"]

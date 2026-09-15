@@ -52,7 +52,7 @@ import torch
 sys.path.insert(0, str(Path(__file__).parent))
 from common import patching as P
 from common.model_io import load_model, model_revision, strict_greedy_config
-from common.render import render, check_cue_alignment
+from common.render import render, check_span_alignment
 from common.scenarios import BaseScenario, RenderedCondition, SYSTEM_POLICY
 from eval_behavior import (bootstrap_ci, label_token_ids, parse_label, score_quote)
 
@@ -73,8 +73,17 @@ def load_corpus():
     return base, conds
 
 
-def fit_direction(model, tok, model_name, base, conds, layers, n_pairs, split="discovery"):
-    """Raw difference of means at the cue span, per layer, fitted on `split` only."""
+def fit_direction(model, tok, model_name, base, conds, layers, n_pairs, split="discovery",
+                  cond_a="P", cond_b="S", span="cue"):
+    """Raw difference of means at the aligned span, per layer, fitted on `split` only.
+
+    `cond_a -> cond_b` selects the contrast the direction is fitted on. The default P->S is
+    the protocol's authority contrast; **M->B is the better target**, because the measured
+    ladder showed the dominant effect is the imperative framing itself rather than its claimed
+    authority (notes/08-results-ladder.md). M and B are length-matched and differ only in
+    whether the inserted sentence is an instruction, so their difference of means isolates
+    instruction-ness with label presence and position held fixed.
+    """
     sums = {L: None for L in layers}
     n = 0
     used = []
@@ -83,13 +92,13 @@ def fit_direction(model, tok, model_name, base, conds, layers, n_pairs, split="d
             continue
         bs = BaseScenario(**b)
         try:
-            rP = render(tok, model_name, RenderedCondition(**conds[sid]["P"]), bs)
-            rS = render(tok, model_name, RenderedCondition(**conds[sid]["S"]), bs)
+            rP = render(tok, model_name, RenderedCondition(**conds[sid][cond_a]), bs)
+            rS = render(tok, model_name, RenderedCondition(**conds[sid][cond_b]), bs)
         except Exception:
             continue
-        if not check_cue_alignment(tok, model_name, rP, rS)["aligned"]:
+        if not check_span_alignment(tok, model_name, rP, rS, span)["aligned"]:
             continue
-        pos = list(range(*rS.spans["cue"]))
+        pos = list(range(*rS.spans[span]))
         with P.capture(model, layers) as st:
             P.forward_logprobs(model, rS.input_ids)
             aS = {L: st[L][0, pos, :].mean(0).float().cpu() for L in layers}
@@ -260,7 +269,7 @@ def evaluate(model, tok, model_name, base, conds, split, lab_ids, layers,
 
 def summarise(rows):
     out = {}
-    for cond in ("N", "B", "P", "S", "U", "F", "Q"):
+    for cond in ("N", "C", "M", "B", "P", "S", "U", "F", "Q"):
         rs = [r for r in rows if r.get("condition") == cond and "correct" in r]
         if not rs:
             continue
@@ -283,6 +292,10 @@ def main():
     ap.add_argument("--eval-split", default="validation")
     ap.add_argument("--n-scen", type=int, default=60)
     ap.add_argument("--modes", default="none,ih_reminder,proj_role,proj_random,tool_suppress")
+    ap.add_argument("--fit-a", default="P", help="clean condition for the fitted contrast")
+    ap.add_argument("--fit-b", default="S", help="corrupt condition for the fitted contrast")
+    ap.add_argument("--fit-span", default="cue", help="aligned span: cue | insert")
+    ap.add_argument("--tag", default="", help="suffix for output filenames")
     args = ap.parse_args()
 
     layers = [int(x) for x in args.layers.split(",")]
@@ -292,7 +305,8 @@ def main():
 
     t0 = time.perf_counter()
     directions, n_fit, fit_ids = fit_direction(
-        model, tok, args.model, base, conds, layers, args.fit_pairs)
+        model, tok, args.model, base, conds, layers, args.fit_pairs,
+        cond_a=args.fit_a, cond_b=args.fit_b, span=args.fit_span)
     fit_s = time.perf_counter() - t0
     norms = {L: round(float(directions[L].norm()), 2) for L in layers}
     print(f"fitted direction on {n_fit} discovery pairs in {fit_s:.0f}s; norms {norms}",
@@ -323,7 +337,9 @@ def main():
         "load_mode": load_mode,
         "layers": layers,
         "alpha": args.alpha,
-        "direction": "raw difference of means (S - P) at the cue span, magnitude preserved",
+        "direction": (f"raw difference of means ({args.fit_b} - {args.fit_a}) at the "
+                      f"{args.fit_span} span, magnitude preserved"),
+        "fit_contrast": f"{args.fit_a}->{args.fit_b}",
         "operator": "project out the component along the fitted direction",
         "gate_positions": "genuine tool-message span, from chat-template metadata",
         "oracle_free": {
@@ -343,10 +359,10 @@ def main():
     out = DATA / "outputs" / "g7"
     out.mkdir(parents=True, exist_ok=True)
     tag = args.model.split("/")[-1]
-    (out / f"rows_{tag}_{args.eval_split}.jsonl").write_text(
+    (out / f"rows_{tag}_{args.eval_split}{args.tag}.jsonl").write_text(
         "\n".join(json.dumps(r) for r in all_rows) + "\n")
-    (out / f"g7_{tag}_{args.eval_split}.json").write_text(json.dumps(report, indent=2))
-    print(f"\nwrote {out}/g7_{tag}_{args.eval_split}.json")
+    (out / f"g7_{tag}_{args.eval_split}{args.tag}.json").write_text(json.dumps(report, indent=2))
+    print(f"\nwrote {out}/g7_{tag}_{args.eval_split}{args.tag}.json")
     return 0
 
 

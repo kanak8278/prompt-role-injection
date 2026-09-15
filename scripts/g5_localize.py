@@ -41,15 +41,19 @@ import torch
 sys.path.insert(0, str(Path(__file__).parent))
 from common import patching as P
 from common.model_io import load_model, model_revision, margin_resolution
-from common.render import render, check_cue_alignment
+from common.render import render, check_cue_alignment, check_span_alignment
 from common.scenarios import BaseScenario, RenderedCondition
 from eval_behavior import bootstrap_ci, label_token_ids
 
 DATA = Path(os.environ["DATA_DIR"])
 LOCATIONS = ("cue", "command", "decision")
+# For a C/M/B contrast there is no cue and no separate command: the whole differing region is
+# the single length-matched "insert" span. Screened locations adapt accordingly.
+LOCATIONS_INSERT = ("insert", "decision")
 
 
-def aligned_pairs(tok, model_name, split, n_pairs, max_scan=400):
+def aligned_pairs(tok, model_name, split, n_pairs, max_scan=400,
+                  cond_a="P", cond_b="S", span="cue"):
     """Yield (BaseScenario, rendered P, rendered S) for positionally aligned pairs only.
 
     §4: if alignment fails the pair is excluded from the aligned causal analysis but retained
@@ -70,12 +74,12 @@ def aligned_pairs(tok, model_name, split, n_pairs, max_scan=400):
             break
         bs = BaseScenario(**b)
         try:
-            rP = render(tok, model_name, RenderedCondition(**conds[sid]["P"]), bs)
-            rS = render(tok, model_name, RenderedCondition(**conds[sid]["S"]), bs)
+            rP = render(tok, model_name, RenderedCondition(**conds[sid][cond_a]), bs)
+            rS = render(tok, model_name, RenderedCondition(**conds[sid][cond_b]), bs)
         except Exception as e:
             excluded.append({"scenario_id": sid, "reason": f"render: {e}"})
             continue
-        a = check_cue_alignment(tok, model_name, rP, rS)
+        a = check_span_alignment(tok, model_name, rP, rS, span)
         if not a["aligned"]:
             excluded.append({"scenario_id": sid, "reason": "; ".join(a["reasons"]),
                              "cue_family": b["cue_family"]})
@@ -100,6 +104,10 @@ def main():
                     help="matched random-position control draws per (layer, location)")
     ap.add_argument("--control-layers", type=int, default=4,
                     help="how many evenly spaced layers get random/irrelevant-donor controls")
+    ap.add_argument("--cond-a", default="P", help="clean/donor condition")
+    ap.add_argument("--cond-b", default="S", help="corrupt/receiving condition")
+    ap.add_argument("--span", default="cue",
+                    help="which span must align and is screened: cue | insert")
     args = ap.parse_args()
 
     dtype = torch.float32 if args.dtype == "fp32" else torch.bfloat16
@@ -108,7 +116,8 @@ def main():
     n_layers = model.config.num_hidden_layers
     all_layers = list(range(n_layers))
 
-    pairs, excluded = aligned_pairs(tok, args.model, args.split, args.n_pairs)
+    pairs, excluded = aligned_pairs(tok, args.model, args.split, args.n_pairs,
+                                    cond_a=args.cond_a, cond_b=args.cond_b, span=args.span)
     print(f"aligned pairs: {len(pairs)}  excluded: {len(excluded)}", flush=True)
     if not pairs:
         print("no aligned pairs; cannot run the aligned causal analysis")
@@ -138,10 +147,12 @@ def main():
                           "task_family": bs.task_family})
 
         # positions are shared: the pair is aligned, so spans coincide by construction
-        pos_of = {loc: site_positions(rS, loc) for loc in LOCATIONS}
+        locs = LOCATIONS if args.span == "cue" else LOCATIONS_INSERT
+        pos_of = {loc: site_positions(rS, loc) for loc in locs}
         body_lo, body_hi = rS.spans["tool_body"]
-        cue_lo, cue_hi = rS.spans["cue"]
-        cmd_lo, cmd_hi = rS.spans["command"]
+        key = "cue" if args.span == "cue" else "insert"
+        cue_lo, cue_hi = rS.spans[key]
+        cmd_lo, cmd_hi = rS.spans.get("command", rS.spans[key])
         # Candidate positions for the matched random control.
         #
         # Attention is causal and P/S differ only in the cue tokens, so P and S activations
@@ -156,7 +167,7 @@ def main():
                 if not (cue_lo <= p < cue_hi) and not (cmd_lo <= p < cmd_hi)]
 
         for L in all_layers:
-            for loc in LOCATIONS:
+            for loc in locs:
                 pos = pos_of[loc]
                 # How much does the donor actually differ at this site? Recorded so a null
                 # *effect* is distinguishable from a null *patch*: zero recovery with zero
@@ -181,7 +192,7 @@ def main():
                 })
 
             if L in ctrl_layers and len(cand) >= max(len(p) for p in pos_of.values()):
-                for loc in ("cue", "command"):
+                for loc in [l for l in locs if l != "decision"]:
                     pos = pos_of[loc]
                     for _ in range(args.random_controls):
                         rpos = sorted(rng.sample(cand, len(pos)))
@@ -202,7 +213,7 @@ def main():
                     with P.capture(model, [L]) as st:
                         P.forward_logprobs(model, other[2].input_ids)
                         donor = st[L].clone()
-                    pos = pos_of["cue"]
+                    pos = pos_of[locs[0]]
                     dd = (act_S[L][0, pos, :] - donor[0, pos, :]).norm().item()
                     with P.patch(model, {L: (pos, donor[0, pos, :])}):
                         mm = m(P.forward_logprobs(model, rS.input_ids))
@@ -236,8 +247,9 @@ def main():
         return e
 
     by_site = {}
+    screened = LOCATIONS if args.span == "cue" else LOCATIONS_INSERT
     for L in all_layers:
-        for loc in LOCATIONS:
+        for loc in screened:
             sel = [r for r in rows if r["layer"] == L and r["location"] == loc]
             if sel:
                 by_site[f"L{L}:{loc}"] = agg(sel)
@@ -258,6 +270,8 @@ def main():
         "dtype": args.dtype,
         "margin_resolution_estimate": margin_resolution(max(1.0, mean_logit_mag), dtype),
         "split": args.split,
+        "contrast": f"{args.cond_a}->{args.cond_b}",
+        "aligned_span": args.span,
         "patched_tensor": "post-block residual stream (model.model.layers[i] output)",
         "n_pairs": len(pairs),
         "n_excluded_unaligned": len(excluded),
@@ -279,11 +293,11 @@ def main():
     out = DATA / "outputs" / "g5"
     out.mkdir(parents=True, exist_ok=True)
     tag = args.model.split("/")[-1]
-    (out / f"rows_{tag}_{args.dtype}.jsonl").write_text(
+    (out / f"rows_{tag}_{args.cond_a}{args.cond_b}_{args.dtype}.jsonl").write_text(
         "\n".join(json.dumps(r) for r in rows) + "\n")
-    (out / f"baselines_{tag}_{args.dtype}.jsonl").write_text(
+    (out / f"baselines_{tag}_{args.cond_a}{args.cond_b}_{args.dtype}.jsonl").write_text(
         "\n".join(json.dumps(b) for b in baselines) + "\n")
-    (out / f"g5_{tag}_{args.dtype}.json").write_text(json.dumps(report, indent=2))
+    (out / f"g5_{tag}_{args.cond_a}{args.cond_b}_{args.dtype}.json").write_text(json.dumps(report, indent=2))
 
     print("\n" + "=" * 70)
     print(f"baseline mean delta_PS = {report['baseline']['mean_delta_PS']:+.3f} "
@@ -299,7 +313,7 @@ def main():
     for k, v in sorted(by_control.items()):
         print(f"  {k:34} n={v['n']:3} recovery={v['mean_recovery']:+8.4f} "
               f"ci={v['ci95_recovery']} donor_delta={v['mean_donor_delta_l2']:.3f}")
-    print(f"\nwrote {out}/g5_{tag}_{args.dtype}.json")
+    print(f"\nwrote {out}/g5_{tag}_{args.cond_a}{args.cond_b}_{args.dtype}.json")
     return 0
 
 

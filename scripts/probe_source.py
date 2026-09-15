@@ -47,17 +47,31 @@ from common.scenarios import SYSTEM_POLICY
 DATA = Path(os.environ["DATA_DIR"])
 
 
-def build_prompt(tok, model_name, text, source):
+# Neutral padding used to equalize where the snippet starts, per the position confound below.
+_PAD_SENT = "This line is filler. "
+
+
+def build_prompt(tok, model_name, text, source, pad_units: int = 0):
     """Render `text` as arriving from either a genuine user or a genuine tool.
 
     Both are *real* message roles -- this is not a forged-authority construction. The probe
     learns what genuine provenance looks like; the attack corpus is where forged provenance
     is then scored.
+
+    **`pad_units` exists because of a measured confound.** The tool scaffold is much longer
+    than the user scaffold (it carries an assistant tool-call turn, and on Qwen a `# Tools`
+    block), so the snippet's body tokens sit at systematically different absolute positions in
+    the two conditions. A first run scored **1.000 accuracy at every layer on both models --
+    and the position-only baseline also scored 1.000**. The probe was reading token position,
+    not provenance. Padding the user condition until the snippet starts at the same index
+    decorrelates position from role. The original paper solved the same problem with
+    variable-length random filler; this is the same idea applied to the scaffold rather than
+    the content.
     """
     fam = model_family(model_name)
     if source == "user":
         msgs = [{"role": "system", "content": SYSTEM_POLICY},
-                {"role": "user", "content": text}]
+                {"role": "user", "content": _PAD_SENT * pad_units + text}]
     else:
         msgs = [{"role": "system", "content": SYSTEM_POLICY},
                 {"role": "user", "content": "Summarise the retrieved document."},
@@ -70,7 +84,8 @@ def build_prompt(tok, model_name, text, source):
     enc = tok(rendered, add_special_tokens=False, return_offsets_mapping=True)
     # body tokens only: the span covering `text` itself, so literal role delimiters are
     # excluded (§9). Located in the rendered string because Llama JSON-escapes tool content.
-    i = rendered.find(text)
+    # rfind, not find: with padding the filler precedes the snippet in the same message.
+    i = rendered.rfind(text)
     if i < 0:
         return None
     lo, hi = i, i + len(text)
@@ -102,12 +117,29 @@ def main():
     n_layers = model.config.num_hidden_layers
     layers = list(range(0, n_layers, args.layer_step))
 
+    # ---- calibrate padding so the snippet starts at the same token index in both
+    # conditions (see build_prompt for the measured confound this removes) ----
+    probe_text = snips[0]["text"]
+    tool_built = build_prompt(tok, args.model, probe_text, "tool")
+    target_start = tool_built[1][0]
+    pad_units = 0
+    while pad_units < 40:
+        u = build_prompt(tok, args.model, probe_text, "user", pad_units=pad_units)
+        if u is None or u[1][0] >= target_start:
+            break
+        pad_units += 1
+    u = build_prompt(tok, args.model, probe_text, "user", pad_units=pad_units)
+    print(f"position calibration: tool snippet starts at token {target_start}, "
+          f"user starts at {u[1][0]} with pad_units={pad_units}", flush=True)
+    start_gap = abs(u[1][0] - target_start)
+
     # ---- extract activations ----
     X = {L: [] for L in layers}
     y, grp, posn, texts = [], [], [], []
     for n, s in enumerate(snips):
         for source in ("user", "tool"):
-            built = build_prompt(tok, args.model, s["text"], source)
+            built = build_prompt(tok, args.model, s["text"], source,
+                                 pad_units=pad_units if source == "user" else 0)
             if built is None:
                 continue
             ids, body_pos, seqlen = built
@@ -173,6 +205,11 @@ def main():
         "revision": model_revision(model),
         "load_mode": load_mode,
         "n_snippets": len(snips),
+        "position_calibration": {
+            "pad_units_added_to_user_condition": pad_units,
+            "snippet_start_token_tool": target_start,
+            "residual_start_index_gap": start_gap,
+        },
         "n_tokens_fit": int(fit.sum()),
         "n_tokens_test": int(test.sum()),
         "probed_tensor": "post-block residual stream, body tokens only, role delimiters excluded",
@@ -189,7 +226,12 @@ def main():
             "Accuracy above the position-only baseline is what requires a representational "
             "explanation; the lexical baseline should sit at chance because the snippet text "
             "is identical across the two source conditions, and a lexical baseline above "
-            "chance would indicate corpus leakage rather than a role representation."),
+            "chance would indicate corpus leakage rather than a role representation. "
+            "An UNPADDED first run scored 1.000 at every layer on both models with a "
+            "position-only baseline of 1.000 as well -- i.e. the probe was reading token "
+            "position, not provenance. The user condition is now padded so the snippet "
+            "starts at the same token index in both conditions; if position_only is still "
+            "near 1.0, the padding did not work and no representational claim is licensed."),
     }
 
     out = DATA / "outputs" / "probe"
