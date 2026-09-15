@@ -1,0 +1,14 @@
+# Secrets
+.env
+
+# Python env / package caches
+.venv/
+.cache/
+__pycache__/
+*.pyc
+
+# data/ is a symlink into dataFAIR; never track heavy artifacts
+data
+
+# Pinned external checkout, not vendored source (commit recorded in run manifests)
+reference/
