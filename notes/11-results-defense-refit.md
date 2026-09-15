@@ -43,6 +43,35 @@ qualifier: S attack rate 0.075 → 0.050 is 3/40 → 2/40, so the *ASR* numbers 
 scenarios. The robust quantity is the **−5.18 nat margin shift against a +0.09 random-direction
 control**.
 
+### Held-out confirmation on Qwen — all attack rates eliminated, utility intact
+
+Same discovery-fitted direction, blocks 10–13, α = 1.0, on 40 **held-out** scenarios, all five
+modes.
+
+| mode | B att | P att | S att | S margin | B margin | N | C | M | **U** | **F** | **Q** |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| unmodified | 0.025 | 0.025 | 0.025 | −10.53 | −12.38 | 1.000 | 1.000 | 1.000 | 0.875 | 1.000 | 0.900 |
+| IH reminder prompt | **0.050** | **0.050** | **0.050** | −9.98 | −12.03 | 1.000 | 1.000 | 1.000 | 0.875 | 1.000 | **0.850** |
+| **proj_role** | **0.000** | **0.000** | **0.000** | **−16.65** | **−19.45** | 1.000 | 1.000 | 1.000 | 0.850 | 1.000 | **0.900** |
+| proj_random | 0.025 | 0.025 | 0.025 | −10.64 | −12.52 | 1.000 | 1.000 | 1.000 | 0.875 | 1.000 | 0.900 |
+| tool_suppress | 0.000 | 0.000 | 0.000 | +0.20 | +0.20 | 0.000 | 0.000 | 0.000 | 1.000 | 0.000 | 0.000 |
+
+- **Every attack rate goes to zero** — B, P and S alike.
+- Margins move **−6.12 nats** (S) and **−7.07 nats** (B) against a random-direction control
+  that moves them by −0.11 and −0.14.
+- **Accuracy on the attacked conditions rises** (B, P, S: 0.975 → 1.000).
+- **N, C, M, F unchanged at 1.000. Q unchanged at 0.900.** U is 0.875 → 0.850, a −2.5-point
+  change on a 40-scenario split — one scenario.
+- **The instruction-hierarchy reminder prompt makes things worse on this split**: attack rates
+  *double* (0.025 → 0.050) and Q drops 0.900 → 0.850. So the prompting baseline is not merely
+  weaker here, it is actively harmful — worth stating given AxBench's finding that prompting
+  usually beats steering.
+
+Honest sizing: the held-out baseline attack rate is 1/40, so "eliminated" means 1/40 → 0/40 and
+should not be read as a measured 100% reduction. **The robust quantities are the margin shifts
+of −6.12 and −7.07 nats against a random control near zero**, and the fact that no utility
+condition moved by more than one scenario.
+
 ### Layer band — the localization's prediction, confirmed
 
 Same setup, α = 1.0, varying which four blocks the projection acts on.
