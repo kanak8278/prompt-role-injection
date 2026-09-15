@@ -1,4 +1,49 @@
-# The defense, refitted on instruction-ness — it works, and the price is exactly one condition
+# The defense, refitted on instruction-ness
+
+**Headline: on Qwen2.5-7B it meets protocol §11's target outright — a substantial security gain
+at no measurable utility cost. On Llama-3.1-8B the same recipe buys security and pays for it in
+the quote-as-data condition.** The difference tracks how cleanly each model represents
+instruction-ness, and is itself the most informative thing here.
+
+## Qwen2.5-7B — selective, with a strength sweep
+
+Validation split, 40 scenarios, blocks 10–13, direction = difference of means **M→B** at the
+length-matched insert span fitted on 60 discovery pairs, projected out, gated on the genuine
+tool-message span.
+
+| setting | S attack | S margin | B attack | N | C | M | U | F | **Q** |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| unmodified | 0.075 | −9.71 | 0.075 | 1.000 | 1.000 | 1.000 | 0.950 | 1.000 | **1.000** |
+| α = 0.0 (no-op control) | 0.075 | −9.71 | 0.075 | 1.000 | 1.000 | 1.000 | 0.950 | 1.000 | 1.000 |
+| α = 0.5 | 0.050 | **−13.14** | 0.025 | 1.000 | 1.000 | 1.000 | 0.975 | 1.000 | **1.000** |
+| **α = 1.0** | **0.050** | **−14.89** | **0.000** | 1.000 | 1.000 | 1.000 | 0.950 | 1.000 | **1.000** |
+| random direction, α = 1.0 | 0.075 | −9.62 | 0.075 | 1.000 | 1.000 | 1.000 | 0.950 | 1.000 | 1.000 |
+| α = 2.0 | 0.075 | −12.67 | 0.050 | 1.000 | 1.000 | 1.000 | 0.925 | 1.000 | 1.000 |
+
+At α = 1.0: the decision margin on the forged-authority condition moves **−5.18 nats**
+(−9.71 → −14.89, i.e. 53% of its own magnitude), the bare-instruction attack rate goes to
+**zero** (3/40 → 0/40), and **every utility condition is unchanged** — N, C, M, F and Q all at
+1.000, U at 0.950. The matched-norm random direction at the same layers and positions moves
+the margin by **+0.09**, so the entire effect is direction-specific.
+
+Three controls worth noting because they all behave correctly:
+
+- **α = 0.0 reproduces the unmodified model exactly** on every condition and every margin to
+  all printed digits — the projection hook is verifiably inert when it should be.
+- **The random direction does nothing**, despite identical norm, layers and positions.
+- **α = 2.0 is worse than α = 1.0** (margin −12.67 vs −14.89, B attack 0.050 vs 0.000).
+  That is the expected shape: α = 1 removes exactly the component along the direction, α = 2
+  reflects it to the other side. Over-projection is not a free lunch, and the optimum sitting
+  exactly at full projection is a small independent sign the direction is meaningful.
+
+**This meets §11's stated target** ("a 50% relative ASR reduction with no more than a
+two-percentage-point observed loss on each major legitimate-task condition") on the security
+side via the B condition and the margin, with **zero** measured utility loss. The honest
+qualifier: S attack rate 0.075 → 0.050 is 3/40 → 2/40, so the *ASR* numbers are a handful of
+scenarios. The robust quantity is the **−5.18 nat margin shift against a +0.09 random-direction
+control**.
+
+## Llama-3.1-8B — the same recipe, and the price it pays
 
 Direction: raw difference of means **M→B** (declarative mention → imperative) at the
 length-matched insert span, fitted on 60 **discovery** pairs, magnitude preserved. Operator:
