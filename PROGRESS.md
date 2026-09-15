@@ -1,11 +1,11 @@
 # Progress — done, in flight, and what the results actually say
 
 Status board. Narrative in `LAB_NOTEBOOK.md`; deviations and their justifications in
-`notes/05-design-decisions.md`; per-stage results in `notes/07`–`notes/10`.
+`notes/05-design-decisions.md`; per-stage results in `notes/07`–`notes/12`.
 Gate definitions are protocol §7. **A gate is marked PASSED only when its stated criterion was
 measured and met.**
 
-Last updated 2026-09-15 18:00.
+Last updated 2026-09-15 19:15. Per-stage results in `notes/07`–`notes/12`.
 
 ## Bottom line
 
