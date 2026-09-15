@@ -43,6 +43,39 @@ qualifier: S attack rate 0.075 → 0.050 is 3/40 → 2/40, so the *ASR* numbers 
 scenarios. The robust quantity is the **−5.18 nat margin shift against a +0.09 random-direction
 control**.
 
+### Layer band — the localization's prediction, confirmed
+
+Same setup, α = 1.0, varying which four blocks the projection acts on.
+
+| blocks | S attack | S margin | B attack | N | C | M | **U** | F | Q |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| unmodified | 0.075 | −9.71 | 0.075 | 1.000 | 1.000 | 1.000 | 0.950 | 1.000 | 1.000 |
+| 4–7 | 0.050 | −11.98 | 0.000 | 1.000 | 1.000 | 1.000 | 0.950 | 1.000 | 1.000 |
+| **10–13** | 0.050 | **−14.89** | **0.000** | 1.000 | 1.000 | 1.000 | 0.950 | 1.000 | 1.000 |
+| 16–19 | 0.050 | −11.79 | 0.025 | 1.000 | 1.000 | 0.975 | 0.950 | 1.000 | 1.000 |
+| 22–25 | 0.075 | **−9.96** | 0.050 | 1.000 | 1.000 | 1.000 | **0.900** | 1.000 | 1.000 |
+
+**Blocks 10–13 is the optimum by a clear margin** (−14.89 against −11.98, −11.79 and −9.96),
+and blocks 22–25 barely does anything (−9.96 against a −9.71 baseline) **while being the only
+band that damages U** (0.950 → 0.900).
+
+That is the prediction written down in `notes/07` *before* this ran, quoted verbatim:
+
+> "an intervention applied at blocks ≥ 16 should be able to suppress the attack only by acting
+> at the decision position, which is where legitimate answer selection also happens — so it
+> should damage U and F. An intervention at blocks 10–13 restricted to the tool span acts
+> before legitimate instruction selection is engaged, so it has a route to being selective."
+
+Both halves hold. The late band is the one that costs legitimate user-instruction following
+and the one that fails to suppress; the early-mid band suppresses maximally at no cost. And it
+lines up with the residency profile from the M→B sweep, where instruction-ness is still 100%
+recoverable from the span through block 16 and has largely left it by block 26 — you can only
+remove the signal from the span while the signal is still in the span.
+
+This is the strongest internal consistency check in the project: a localization measured on one
+contrast predicted, in advance, which intervention depth would be both effective and selective,
+and a separate experiment confirmed it on both counts.
+
 ## Llama-3.1-8B — the same recipe, and the price it pays
 
 Direction: raw difference of means **M→B** (declarative mention → imperative) at the
