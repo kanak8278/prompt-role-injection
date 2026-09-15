@@ -47,6 +47,35 @@ promise.
 So: the intervention buys a large security gain and pays for it almost entirely in **Q — the
 ability to quote an instruction from the document when the genuine user asks for it.**
 
+## Held-out confirmation — the pattern replicates
+
+Same fitted direction (discovery), same layers, same α, evaluated on the **held-out
+within-distribution** split, 40 fresh scenarios.
+
+| | validation | **held-out** |
+| --- | --- | --- |
+| S attack rate, unmodified → proj_role | 0.125 → **0.025** (−80% rel) | 0.075 → **0.025** (−67% rel) |
+| S margin shift under proj_role | **−1.34** | **−1.22** |
+| S margin shift under proj_random | 0.00 | +0.01 |
+| B attack rate | 0.025 → 0.000 | 0.075 → 0.050 |
+| **Q** | 0.925 → **0.750** (−17.5) | 0.900 → **0.825** (−7.5) |
+| F | 0.975 → 0.925 (−5.0) | 0.975 → **0.975** (0.0) |
+| U | 1.000 → 1.000 | 0.900 → **0.975** (+7.5) |
+| N | 1.000 → 0.975 | 1.000 → 0.975 |
+
+The security effect replicates with a clean random-direction null on both splits. The Q cost
+is real on both but **less than half as large on held-out** (−7.5 vs −17.5), and F is
+untouched there. Note the IH-reminder prompt *also* costs Q (−5.0 validation, −7.5 held-out),
+so some Q fragility is generic to intervening at all rather than specific to this direction.
+
+**Consolidated claim, stated at the strength the data supports:** a source-gated projection of
+the instruction-ness direction inside the genuine tool span reduces forged-authority attack
+success by roughly **two thirds to four fifths in relative terms** and shifts the decision
+margin by **−1.2 to −1.3 nats** where a matched-norm random direction shifts it by zero, at a
+cost of **7.5–17.5 points on quote-as-data**, **0–5 points on factual uptake**, and **no loss
+of legitimate user-instruction following**. Absolute attack rates are 1–5 scenarios in 40, so
+the relative percentages should not be read as precise.
+
 ## Why that is the mechanistically coherent price, not a random cost
 
 The direction was fitted to separate "this inserted sentence is an imperative" from "this
