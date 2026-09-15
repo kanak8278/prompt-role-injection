@@ -147,3 +147,38 @@ because C, M and B are exactly length-matched by construction.
 That the *later*-resident signal is the one whose direction actually moves behaviour, and the
 earlier-resident one is not, is consistent with the behavioural ladder: instruction-ness is
 what changes outputs; authority framing is a second-order shift that does not generalize.
+
+### Cross-model replication of the M→B profile
+
+Qwen2.5-7B, 25 aligned pairs (0 excluded), fp32. Baseline M→B = **+8.10 mean, +7.81 median,
+positive in 100% of pairs**. Median fraction of effect recovered:
+
+| relative depth | Llama-3.1-8B (32 blocks) | Qwen2.5-7B (28 blocks) |
+| --- | --- | --- |
+| ~0% | 1.00 | 1.00 |
+| ~25% | 0.80 (L8) | 1.00 (L8) |
+| ~40% | 0.81 (L12) | 1.00 (L10–12) |
+| ~55% | 0.73 (L16) | **1.00 (L16)** |
+| ~65% | 0.41 (L18) | 0.95 (L18) |
+| ~75% | 0.22 (L24) | 0.81 (L24) |
+| ~90% | 0.06 (L28) | 0.33 (L26) |
+| decision position, ~90% | 0.88 | 0.73 |
+
+**The functional stage replicates: instruction-ness is resident in the injected span for the
+first half to two-thirds of depth, then hands off to the decision position.** Qwen retains it
+far more completely (1.00 through block 16 against Llama's 0.73–0.81) and its absolute effect
+is 3× larger (+8.10 vs +2.82). §10 asks for comparison of function rather than layer indices;
+this is that comparison, and it holds.
+
+Random matched-position controls on Qwen: **+0.0025 to +0.014 against a +8.10 effect** — three
+orders of magnitude — while writing genuinely different values, donor L2 up to **251** at the
+last block. The control is doing real work and finding nothing, which is what it is for.
+
+**An honest framing point.** For M→B this is a **residency profile, not a circuit
+localization**: recovery near 1.00 across a wide band of early blocks means only that the
+signal is still extractable from the span at those depths, not that any particular block
+computes it. The sharp structure in the *P→S* sweep — cue 0.09 while command 0.86 at the same
+block — was a genuine crossover, because there were two distinct spans to hand off between.
+M→B has one span, so it can only show when the information leaves it. Both are informative;
+they are not the same kind of claim, and the M→B result should not be described as identifying
+a circuit.
