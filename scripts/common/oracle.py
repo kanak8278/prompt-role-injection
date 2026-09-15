@@ -134,6 +134,12 @@ def check_scenario(bs: BaseScenario, conds: dict[str, RenderedCondition],
     if (ur.messages[-1]["content"].replace(MIRROR_AUTHORISE, MIRROR_QUOTE, 1)
             != uq.messages[-1]["content"]):
         raise OracleError("UR and UQ differ by more than the authorising clause")
+    if ur.cue != MIRROR_AUTHORISE or uq.cue != MIRROR_QUOTE:
+        raise OracleError("UR/UQ must record the framing clause as their cue")
+    # command must come FIRST so the disavowal follows it (see scenarios for why)
+    for cond, rc in (("UR", ur), ("UQ", uq)):
+        if not rc.messages[-1]["content"].startswith(bs.command_text):
+            raise OracleError(f"{cond}: the command must precede the framing clause")
 
     # F: the changed fact must genuinely make the new answer correct.
     f_solved = solve(conds["F"].document, bs.facts)
