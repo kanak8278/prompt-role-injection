@@ -118,6 +118,31 @@ So the causal target is **M→B**, and the margin-vs-ASR dissociation is itself 
 two readouts §9 insists on reporting separately are measuring different things, and here they
 separate cleanly along the copying/instruction boundary.
 
+### The two models are susceptible in different ways
+
+| step | Llama-3.1-8B | Qwen2.5-7B |
+| --- | --- | --- |
+| N → C neutral insertion | −0.577 [−0.78, −0.38] · 29% | −0.114 [−0.35, **0.19**] · 38% |
+| C → M label mentioned | **+2.930** [2.71, 3.17] · 99% | +2.060 [1.74, 2.43] · 92% |
+| M → B imperative framing | +2.180 [1.84, 2.53] · 78% | **+9.186** [8.58, 9.79] · **100%** |
+| N → B total | +4.533 | +11.132 |
+| share of total from copying (C→M) | **65%** | 19% |
+| share of total from the imperative (M→B) | 48% | **83%** |
+
+On **Llama the effect is mostly answer-copying**: merely naming the label carries 65% of it.
+On **Qwen it is mostly instruction-following**: the imperative framing carries 83%, at +9.19
+nats and positive in **100%** of 200 scenarios. Neutral insertion is ≈0 on both (Qwen's CI
+spans zero), so the insertion itself is not the effect on either model — the control holds.
+
+Two consequences:
+
+1. **Pooling these models would have been actively misleading.** The totals differ 2.5×, and
+   the *composition* differs qualitatively. §13's refusal to pool is again load-bearing.
+2. **Qwen is the better subject for the instruction-routing question.** Its M→B effect is 4×
+   larger than Llama's, perfectly consistent across scenarios, and its baseline attack rates
+   are higher (B 6.5%, S 12.0% vs Llama's 4.5%, 6.5%) — so there is real headroom for a defense
+   to show an effect, which is exactly what the Llama defense lacked.
+
 ## The alignable contrast that replaces N→B
 
 To localize "instruction-ness" while holding length and position fixed, insert at the same

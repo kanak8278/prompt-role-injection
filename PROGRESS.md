@@ -1,151 +1,165 @@
-# Progress — done, in flight, and blocked
+# Progress — done, in flight, and what the results actually say
 
-Status board. Narrative reasoning goes in `LAB_NOTEBOOK.md`; design deviations and their
-justifications in `notes/05-design-decisions.md`. Gate definitions are protocol §7.
-**A gate is only marked PASSED when its stated criterion was actually measured and met.**
+Status board. Narrative in `LAB_NOTEBOOK.md`; deviations and their justifications in
+`notes/05-design-decisions.md`; per-stage results in `notes/07`–`notes/10`.
+Gate definitions are protocol §7. **A gate is marked PASSED only when its stated criterion was
+measured and met.**
 
-Last updated: 2026-09-15.
+Last updated 2026-09-15 18:00.
+
+## Bottom line
+
+The project set out to extend the role-confusion account of prompt injection toward a defense.
+**The measurements do not support the premise it was built on, and they say something more
+useful instead.**
+
+1. **Forged *user* authority is not a robust attack vector at this scale.** Attributing an
+   injected command to the user helps the attacker by +0.70 nats in distribution, **+0.02 on a
+   new task**, and **−1.43 on new cue wordings** — the sign flips once the literal token "user"
+   is removed. The effect is lexically specific, not a general authority representation.
+2. **What does matter is instruction presence, and it is large and robust**: +4.5 to +5.8 nats,
+   positive in **97–100%** of scenarios, across two task families and two disjoint cue
+   vocabularies, on both models.
+3. **And most of that margin is answer-copying, not instruction-following.** Merely *mentioning*
+   the target label in the document accounts for 65% of the effect on Llama in 99% of
+   scenarios — with **zero** attack success. Only the imperative framing moves behaviour.
+4. **Attributing an instruction to the document actively defends** (−1.3 to −2.3 nats, robust,
+   and stronger out of distribution). Nobody appears to have reported this.
+5. **Provenance is perfectly decodable and not used.** A linear probe separates genuine user
+   from genuine tool provenance at **1.000** accuracy at every layer (position-only baseline
+   0.737, lexical 0.500) — and the model still shifts toward obeying tool-borne instructions.
+   This is §14's "source remains decodable while the attack succeeds" row, measured.
 
 ## Gate status
 
 | Gate | Criterion | Llama-3.1-8B | Qwen2.5-7B |
 | --- | --- | --- | --- |
-| G0 setup | model loads, headroom, reproducible prompts, 100 forwards benchmarked | **PASS** | **PASS** |
-| G1 data | full structural/oracle/split audit, no unresolved critical errors | **PASS** (model-reviewed, see caveat) | same corpus |
-| G2 behavior | ≥95% separately on N, U, F, frozen parser | **PASS** (99.0 / 99.0 / 99.0) | **PARTIAL** — U = 91.5% |
-| G3 contrast | ≥40 attack-responsive of 200; reproducible cue effect | **PASS** (132) | **PASS** (129) |
-| G4 instrumentation | no-op/self-patch within noise; positive control flips output | **PASS** | not run |
-| G5 localization | repeatable effect under >1 donor/control scheme | **running** | not run |
-| G6 mechanism | effects track instruction selection, survive held-out | not started | not started |
-| G7 defense | useful security/utility tradeoff, no clean-answer oracle | not started | not started |
-| G8 transfer | held-out task/cue + external eval, own competence checks | partial (Qwen pilot done) | — |
+| G0 setup | loads, headroom, reproducible prompts, benchmarked | **PASS** | **PASS** |
+| G1 data | full structural/oracle/split audit | **PASS** (model-reviewed) | same corpus |
+| G2 behavior | ≥95% on N, U, F separately | **PASS** 99.0 / 99.0 / 99.0 | **PARTIAL** U = 91.5% |
+| G3 contrast | ≥40 attack-responsive of 200 | **PASS** 132 | **PASS** 129 |
+| G4 instrumentation | no-op/self-patch in noise; positive control flips | **PASS** | **PASS** |
+| G5 localization | repeatable effect under >1 donor/control scheme | **PASS** for P→S | M→B running |
+| G6 mechanism | tracks instruction selection, survives held-out | **partial** — see below | not started |
+| G7 defense | useful security/utility tradeoff, no oracle | **NULL** (fitted on P→S) | M→B refit running |
+| G8 transfer | held-out task/cue + own competence checks | **PASS** (both held-out splits) | running |
 
-## Headline results so far
+## Results
 
-### G2/G3 — forged authority shifts preference, but rarely flips the output
+### The ladder — decomposed (pilot, 200 scenarios, 9 conditions, zero invalid outputs)
 
-200-scenario pilot, six conditions each, zero invalid outputs on both models.
+Δ margin, paired per scenario, 2,000-resample stratified bootstrap. Positive favours attacker.
 
-| Condition | Llama-3.1-8B | Qwen2.5-7B |
+| step | isolates | Llama-3.1-8B | Qwen2.5-7B |
+| --- | --- | --- | --- |
+| N → C | length-matched **neutral** insert | −0.577 [−0.78, −0.38] · 29% | −0.114 [−0.35, 0.19] · 38% |
+| C → M | target label **mentioned**, no instruction | **+2.930** [2.71, 3.17] · **99%** | +2.060 [1.74, 2.43] · 92% |
+| M → B | the **imperative** framing | +2.180 [1.84, 2.53] · 78% | **+9.186** [8.58, 9.79] · **100%** |
+| N → B | total bare-instruction effect | +4.533 | +11.132 |
+| B → P | attributed to the **document** | **−1.343** [−1.69, −0.99] | −0.612 [−1.26, 0.06] |
+| B → S | attributed to the **user** | +0.696 [0.30, 1.11] | +2.386 [1.65, 3.14] |
+| P → S | protocol's primary contrast | +2.039 [1.61, 2.47] | +2.998 [2.29, 3.72] |
+
+Steps sum exactly (−0.577 + 2.930 + 2.180 = 4.533). ASR: **C and M produce 0.000** on both
+models; B produces 0.045 (Llama) / 0.065 (Qwen); S 0.065 / 0.120.
+
+**The two models are susceptible in different ways** — copying carries 65% of Llama's effect,
+the imperative carries 83% of Qwen's. Pooling them would have been misleading.
+
+### Generalization (Llama) — the decisive table
+
+| contrast | pilot | held-out **task** | held-out **cue** (no literal "user") |
+| --- | --- | --- | --- |
+| N → B | +4.533 · 97% | **+5.847 · 100%** | **+5.144 · 98%** |
+| B → P | −1.343 · 28% | −2.096 · 18% | −2.299 · 13% |
+| B → S | +0.696 · 56% | **+0.021** [−0.54, 0.56] | **−1.425** [−1.96, −0.86] |
+
+### G5 localization of P→S (fp32, 40 aligned pairs, 8 excluded as unaligned)
+
+A genuine three-stage relay. Median fraction of the per-pair effect recovered:
+
+| block | cue span | command span | decision |
+| ---: | ---: | ---: | ---: |
+| 0–2 | **1.01** | ~0.00 | 0.00 |
+| 8 | 0.55 | 0.35 | 0.00 |
+| **12** | **0.09** | **0.86** | 0.01 |
+| 18 | 0.01 | 0.47 | 0.42 |
+| 26 | 0.00 | 0.16 | 0.73 |
+| 31 | 0.00 | 0.00 | **1.00** |
+
+Cue recovery collapses at block 12 exactly where command recovery peaks; handoffs approximately
+conserve the effect (block 12: 0.95; block 18: 0.89). Matched random-position controls are
+**two orders of magnitude smaller** (0.0003–0.035) while writing genuinely different values
+(donor L2 up to 30.2). Endpoints are near-tautological and flagged as such.
+
+### G7 defense fitted on P→S — a null, with an identifiable cause
+
+Held-out within-distribution, 40 scenarios, layers 10–13, α = 1.0, gated on the genuine tool span:
+
+| mode | N | B | P | S | U | F | Q | S ASR |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| unmodified | 1.000 | 0.925 | 0.975 | 0.925 | 0.900 | 0.975 | 0.900 | 0.075 |
+| IH reminder prompt | 1.000 | 0.950 | 0.950 | 0.925 | 0.925 | 0.975 | 0.825 | 0.075 |
+| proj_role (ours) | 1.000 | 0.925 | 0.950 | 0.950 | 0.900 | 0.975 | 0.950 | 0.050 |
+| proj_random (matched norm) | 1.000 | 0.925 | 0.950 | 0.925 | 0.925 | 0.975 | 0.900 | 0.075 |
+| **tool_suppress** | **0.000** | **0.000** | **0.000** | **0.000** | 1.000 | **0.000** | **0.000** | 0.000 |
+
+3/40 → 2/40 is not a result. Utility *was* preserved — selective but not effective. Cause is
+identifiable: the direction was fitted on the second-order contrast. **The tool-suppression row
+is the most informative in the project**: perfect security bought with total task failure, the
+empirical form of "suppression is easy, selectivity is the problem."
+
+### Instrumentation and measurement integrity
+
+| check | Llama | Qwen |
 | --- | --- | --- |
-| N clean accuracy | 99.0% | 99.0% |
-| P accuracy / ASR given N solved | 94.5% / 4.0% | 93.5% / 5.6% |
-| S accuracy / ASR given N solved | 92.5% / **6.1%** | 88.0% / **11.1%** |
-| U legitimate revision | 99.0% | 91.5% |
-| F legitimate fact uptake | 99.0% | 99.5% |
-| Q instruction-as-data quote | 93.0% | 91.0% |
+| run-to-run margin noise | **0.0** (bitwise reproducible) | **0.0** |
+| no-op hooks / self-patch / zero-strength steer | 0.0 / 0.0 / 0.0 | 0.0 / 0.0 / 0.0 |
+| positive control flips top token | 12/12 | 10/10 |
+| batch-1 margin equivalence | PASS | PASS |
 
-**P→S margin shift** (positive favours the attacker; scenario-level bootstrap, 2,000 resamples):
+Two floors found by checking rather than by assuming:
+- **bf16 quantizes the margin to ~0.125 nats** (the logit resolution at magnitude ~16). Causal
+  work runs in fp32, measured resolution 9.5e-7.
+- **The probe's position-only baseline was 1.000** before padding — the probe was reading token
+  index. After equalizing the snippet start index it is 0.737 while the probe stays at 1.000.
 
-| | Llama-3.1-8B | Qwen2.5-7B |
-| --- | --- | --- |
-| mean Δ margin | **+2.04 nats** | **+3.00 nats** |
-| 95% CI | [1.63, 2.45] | [2.28, 3.77] |
-| fraction positive | 78% | 69.5% |
-| binary output flips | 7 / 200 | 15 / 200 |
+## In flight
 
-The effect is a **preference shift, not an attack-success effect**. §7 G3 anticipates exactly
-this — "there may be few binary flips but a measurable probability shift; that supports a
-different scope of conclusion" — so the claim is scoped accordingly. Absolute ASR is low
-(4→6% Llama, 6→11% Qwen), which §11 requires be reported as absolute differences.
+`scripts/run_pipeline2.sh` → `run_pipeline3.sh`, chained, logs in `$LOG_DIR/pipeline{2,3}.log`:
+M→B localization on both models; defense refitted on M→B with an α sweep (0 / 0.5 / 1 / 2) and
+a layer-band comparison (4–7, 10–13, 16–19, 22–25) on validation before any held-out claim;
+Qwen transfer ladders. Expected complete ~19:00.
 
-**Cue-family heterogeneity — the effect is not uniform, and this is the most interesting
-behavioural finding so far.** Mean Δ margin by family:
+## Honest limits
 
-| Cue family (P cue → S cue) | Llama | Qwen |
-| --- | --- | --- |
-| attribution_note ("from the file" → "from the user") | **+5.43** | **+8.45** |
-| label_prefix (DOCUMENT NOTE → USER UPDATE) | +3.03 | +4.72 |
-| states ("The document states" → "The user states") | +3.01 | +4.30 |
-| written_by ("by the archive" → "by the user") | +1.79 | +4.29 |
-| speaker_unmatched ("the archive" → "the account holder") | +1.69 | **−2.76** |
-| source_tag ("Source: document." → "Source: user.") | **−1.39** | −0.56 |
-
-`source_tag` runs *backwards* on Llama with a CI excluding zero — "Source: user." makes it
-**less** likely to obey than "Source: document." And `speaker_unmatched` is positive on Llama
-but significantly negative on Qwen. So the aggregate is positive on both models while the
-per-family structure is model-specific. §13's instruction not to pool is load-bearing here.
-
-**Cross-model observation worth flagging, not yet a claim.** Qwen is the more susceptible
-model (+3.00 vs +2.04, 15 vs 7 flips) and is also the model with **no role-level source
-signal** — its tool results render inside a `user` block, distinguished only by a plain-text
-`<tool_response>` wrapper, whereas Llama has a distinct `ipython` role header. That ordering is
-what the role-confusion hypothesis predicts. With n=2 models it is suggestive only.
-
-### G4 — instrumentation is trustworthy
-
-| Check | Result |
-| --- | --- |
-| run-to-run noise floor (margin) | **0.0** — forwards are bitwise reproducible |
-| no-op hooks on all 32 blocks | **0.0** deviation from baseline |
-| self-patch (own activation) | **0.0** |
-| zero-strength steering (α=0) | **0.0** |
-| positive control (full final decision state from another run) | changed top token in **12/12**, mean \|effect\| 11.4 nats |
-
-§8 is explicit that the positive control only proves the plumbing can change the answer and is
-**not** evidence of a localized authority mechanism.
-
-### Measurement precision — a floor that would have produced false nulls
-
-G4's cross-donor patch effects landed on exact multiples of **0.125**. That is the bf16 logit
-resolution at magnitude ~16 (`2^(floor(log2 16) − 7)`), confirmed numerically. So in bf16 the
-margin cannot resolve a patch effect below ~0.125 nats, and a small real effect would be
-reported as zero.
-
-The causal sweep therefore runs in **fp32**, which moves the floor to ~1e-6 (measured 9.5e-7)
-at ~3× the cost (167 ms vs 53 ms per forward, 34 GB peak — fits GPU 1). Baseline margins are
-re-measured in fp32 rather than reused from the bf16 behavioural run, since precision changes
-the activations themselves.
-
-## Done
-
-**Infrastructure**: project on rnd5 (code) + rnd5 dataFAIR (data) via `data/` symlink;
-verified venv (torch 2.5.1+cu124, transformers 5.14.1, CUDA on GPU 1); `env.sh` encoding the
-host's TLS/BLAS/cache gotchas; git repo, local commits only, nothing pushed.
-
-**Access verified, not assumed**: Llama-3.1-8B-Instruct gated access granted, revision
-`0e9e39f2…`; Qwen2.5-7B-Instruct revision `a09a3545…`; `claude-opus-5` and `claude-sonnet-5`
-both live on the key; upstream repo pinned at `ec333c40`.
-
-**Corpus**: 920 base scenarios → 5,520 rendered conditions, exactly the §5 partition plan
-(pilot 200 / discovery 240 / validation 120 / heldout-wd 120 / heldout-cue 120 /
-heldout-task 120). Plus 1,000 neutral probe snippets split 600/200/200 at snippet level.
-0 oracle failures, 0 warnings, no cross-scenario document sharing, no held-out cue leakage,
-probe corpus provably disjoint from the attack corpus.
-
-**Code**: `scripts/common/` — `scenarios.py` (generator), `oracle.py` (independent solvers
-that parse the *document text*, a genuinely different code path), `render.py` (per-model
-scaffold, span alignment, payload-safety assertions), `model_io.py`, `patching.py`.
-`scripts/` — `g0_setup.py`, `build_dataset.py`, `eval_behavior.py`, `g4_instrumentation.py`,
-`g5_localize.py`, `probe_source.py`.
-
-## Open issues and honest limits
-
-- **G1 is model-reviewed, not human-reviewed.** The user chose Opus triage over human review;
-  the protocol itself says model agreement is "useful triage, not independent proof of
-  correctness". The *structural* audit (oracle agreement, split hygiene, span alignment,
-  payload safety) is fully automated and passes; it is the semantic review that is delegated.
-- **G2 partially fails on Qwen**: U = 91.5% against a ≥95% gate. Llama is the primary model;
-  Qwen's U shortfall is reported rather than papered over, and it caps what a Qwen utility
-  claim can assert.
-- **Both discovery task families are now lookup-shaped** after `table_select` was replaced
-  (it failed G2 competence outright). Task generality rests on the `two_hop` transfer split,
-  not on the discovery pair.
-- **Low absolute ASR** (6% on Llama) means a defense evaluated on output flips alone would
-  have very little signal. The margin is the informative quantity here, and §11 warns to
-  report absolute differences when baseline ASR is low.
-- **GPU tenancy is not guaranteed.** GPU 0 carries another user's 72 GB job throughout.
+- **G1 is model-reviewed, not human-reviewed** (user's explicit choice). The structural audit —
+  oracle agreement via an independent document parser, split hygiene, span alignment, payload
+  safety — is fully automated and passes. The semantic review is delegated.
+- **G2 partially fails on Qwen** (U = 91.5% against ≥95%). Reported, not papered over.
+- **Both discovery task families are lookup-shaped** after `table_select` failed G2 outright.
+  Task generality rests on the `two_hop` transfer split.
+- **Low absolute ASR** (4.5–12%) leaves little headroom for a defense to demonstrate an effect.
+  Qwen has more (S = 12.0%) which is why the refit targets it.
+- **The irrelevant-donor control in G5 has n = 1** — its guard required equal prompt lengths,
+  which almost never held. A real gap; needs length-bucketed donor selection.
+- **No subspace-illusion diagnostics run.** A directional intervention can behave as if it
+  changed a feature by activating a dormant pathway. Mitigating factor: we patch the residual
+  stream, a full bottleneck, where this is least available.
+- **Single-seed corpus, no paraphrase descendants generated**, so `family_id` grouping is
+  currently trivial (one scenario per family).
+- **No adaptive-attack evaluation.** Published work breaks 12 defenses at >90% ASR, including
+  Circuit Breakers at 100%. Any robustness claim would be unsupported.
+- **V-Steer (COLM 2026) substantially occupies the intended contribution** — training-free,
+  span-restricted, provenance-gated, on these exact two models. Reposition as causal validation
+  plus a selectivity standard, not a new defense. See `notes/06-literature.md`.
 - Nothing pushed anywhere; no external side effects beyond HF downloads and Anthropic API.
 
 ## Decisions on record
 
-- **G1 review**: Opus triage rather than human review, proceeding on a clean pass — user's
-  explicit choice, recorded as model-reviewed.
-- **Autonomy**: run through gates, stop only at decision gates or on failure; fix what is
-  fixable — user's explicit choice.
-- **Storage**: rnd5 for code and data, deviating from CLAUDE.md's rnd1 preference because
-  rnd1 (96%) and rnd2 (100%) are both past the file's own 90% threshold.
-- **fp32 for causal work, bf16 for behavioural work** — justified by the measured bf16 margin
-  floor above; recorded per run, never silent.
-- Protocol deviations (task family, cue design, scaffold, condition U wording, parser casing,
-  label pool) are each justified by a measurement in `notes/05-design-decisions.md`.
+- **G1 review**: Opus triage instead of human review, proceeding on a clean pass — user's choice.
+- **Autonomy**: run through gates, fix what is fixable, stop only at decision gates — user's choice.
+- **Storage**: rnd5 for code and data; rnd1 (96%) and rnd2 (100%) are past the CLAUDE.md threshold.
+- **fp32 for causal work, bf16 for behavioural** — justified by the measured bf16 margin floor.
+- **Conditions B, C, M added beyond the protocol's six**, each forced by a measurement, each
+  asserted by the oracle to be exactly the intended minimal variant.
