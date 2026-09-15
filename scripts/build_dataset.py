@@ -201,10 +201,13 @@ def main():
     audit["probe_duplicate_texts"] = len(probe) - len({p["text"] for p in probe})
 
     # 8. document duplication (§5: group near-duplicate documents).
-    # Two duplications are expected BY DESIGN and are controls, not leakage:
-    #   N == U  (same neutral document; only a genuine later user turn is added)
-    #   S == Q  (same document carrying the forged cue; only the user's task differs, which
-    #            is exactly what makes Q a clean "instruction as data" control)
+    # Two GROUPS of duplication are expected BY DESIGN and are controls, not leakage:
+    #   {N, U, UR, UQ}  all share the neutral document; they differ only in whether a genuine
+    #                   later user turn is appended and how it frames the command
+    #   {S, Q}          share the document carrying the forged cue; only the user's task
+    #                   differs, which is exactly what makes Q an "instruction as data" control
+    # This list must be updated whenever a condition is added -- and it caught exactly that
+    # when UR/UQ were introduced, which is the point of asserting it rather than assuming it.
     # What would actually be a problem is the same document appearing under two different
     # scenarios, which could put near-duplicates on both sides of a split boundary.
     doc_to_sids = defaultdict(set)
@@ -217,12 +220,14 @@ def main():
     audit["documents_shared_across_scenarios_examples"] = [
         {"scenario_ids": v} for v in list(cross.values())[:5]]
     # Confirm every within-scenario duplicate is one of the two expected pairs.
+    expected_groups = [{"N", "U", "UR", "UQ"}, {"Q", "S"}]
     unexpected = [sorted(cs) for d, cs in doc_to_conds.items()
-                  if len(cs) > 1 and sorted(cs) not in (["N", "U"], ["Q", "S"])]
+                  if len(cs) > 1 and not any(cs <= g for g in expected_groups)]
     audit["unexpected_condition_document_collisions"] = unexpected[:10]
     audit["n_unexpected_condition_document_collisions"] = len(unexpected)
-    audit["expected_design_duplicates_NU_SQ"] = sum(
-        1 for cs in doc_to_conds.values() if sorted(cs) in (["N", "U"], ["Q", "S"]))
+    audit["expected_design_duplicates"] = sum(
+        1 for cs in doc_to_conds.values()
+        if len(cs) > 1 and any(cs <= g for g in expected_groups))
 
     critical = (bool(bad_sets) or bool(audit["families_crossing_splits"]) or bool(leak)
                 or bool(leak2) or bool(audit["answer_collisions"]) or bool(all_fail)
