@@ -5,6 +5,96 @@ Format: date, what happened, what it means, what's next. Full technical detail l
 
 ---
 
+## 2026-09-15 (evening) — the premise failed, the decomposition replaced it, and the defense works at a measured price
+
+Running order of what actually happened, because the sequence is the argument.
+
+**1. The protocol's primary contrast turned out to be the wrong one.** P vs S (document- vs
+user-attributed instruction) gave a reproducible +2.04 nat margin shift and almost no output
+change. Adding a bare-instruction condition B showed why: **N→B is +4.53 nats in 97% of
+scenarios on Llama and +11.13 in 100% on Qwen** — the mere presence of an injected instruction
+dominates everything. Worse, on Llama most of P→S turned out to be **document attribution
+acting defensively** (B→P = −1.34, CI excluding zero) rather than user attribution acting
+offensively (B→S = +0.70). Reported as designed, P→S would have overstated forged authority by
+about 3×.
+
+**2. The authority effect does not generalize, and the held-out design caught it.** The
+held-out cue families were fixed in advance and deliberately avoid the literal token "user"
+(requester, customer, operator). B→S is +0.70 in distribution, **+0.02 when only the task
+changes**, and **−1.43 on the new cue wordings — the sign flips**. So the effect is lexically
+specific to "user", not a general representation of claimed authority. Meanwhile instruction
+presence (+4.5 to +5.8, 97–100% positive) and document attribution (−1.3 to −2.3, stronger out
+of distribution) are robust everywhere. That one table is the project's main negative result
+and it is clean.
+
+**3. Then the margin metric itself turned out to be measuring mostly copying.** Two more
+length-matched conditions (C neutral, M declarative mention, both exactly 3 tokens like B on
+both tokenizers) decomposed N→B into −0.58 + **2.93** + **2.18** = 4.53. The middle term —
+merely *mentioning* the target label — is 65% of the whole effect on Llama, occurs in 99% of
+scenarios, and causes **zero** attack success. Only the imperative moves behaviour. A
+localization run on an un-decomposed contrast would largely have localized answer-copying and
+could have been written up as instruction routing. §10's answer-identity control earned its
+place. And the two models split qualitatively: copying carries 65% of Llama's effect, the
+imperative carries 83% of Qwen's.
+
+**4. The probe completed a dissociation rather than supporting the mechanism.** After fixing a
+position confound my own §9-mandated baseline caught — the first run scored 1.000 at every
+layer *and so did position-only* — the probe separates genuine user from genuine tool
+provenance at **1.000 against a 0.737 position baseline and a 0.500 lexical baseline**. So
+provenance is essentially perfectly decodable at every depth, and the model still shifts toward
+obeying tool-borne instructions. That is §14's "source remains decodable while the attack
+succeeds" row: a statement about the gap between representation and use, not about role
+confusion.
+
+**5. The defense was a null, then worked once refitted.** Fitted on P→S it moved held-out
+attack rate 3/40 → 2/40 — nothing. Refitted on **M→B** (instruction-ness) it gives, on two
+splits with a clean matched-norm random-direction control at zero:
+
+| | validation | held-out |
+| --- | --- | --- |
+| S attack rate | 0.125 → **0.025** | 0.075 → **0.025** |
+| S margin | −8.41 → **−9.75** | −8.35 → **−9.57** |
+| random-direction control | −8.41 → −8.41 | −8.35 → −8.34 |
+| Q (quote-as-data) | 0.925 → **0.750** | 0.900 → **0.825** |
+| F (factual uptake) | 0.975 → 0.925 | 0.975 → 0.975 |
+| U (genuine user) | 1.000 → 1.000 | 0.900 → 0.975 |
+
+**The price is almost entirely Q, and that is mechanistically the right price.** The direction
+separates an imperative from a declarative mention; projecting it out removes the
+representation *that the span contains an instruction*, so obedience drops and so does the
+ability to recognise and quote it. **Instruction-recognition and instruction-obedience are not
+separable by a single linear direction inside the tool span.** The source gating did buy
+something real though: U is untouched, so legitimate instruction following from the genuine
+user survives intact — compare the tool-suppression baseline, which also holds U at 1.000 and
+scores 0.000 on every other condition.
+
+**6. The localizations dissociate.** Patching the differing span, median fraction of each
+contrast's effect recovered: authority-cue information has left its span by block 12 (1.01 →
+0.09), while instruction-ness is still **81% resident at block 12** and only halves by block
+18. Two signals, two read-out depths — and the later-resident one is the one whose direction
+actually moves behaviour, which is exactly what the behavioural ladder predicted. Random
+matched-position controls sit at +0.001 to +0.035 against real effects of +2.2 to +2.8, with
+genuine donor deltas up to 30, so they are real patches that write different values and still
+do nothing.
+
+**Three things I would flag to a reader before they believe any of this.** The endpoints of
+both localization sweeps are near-tautological (patching layer-0 residuals at a span ≈
+substituting its text; patching the final block at the decision position is the G4 positive
+control) — the informative content is the crossover, not the endpoints. Absolute attack rates
+are 1–5 scenarios in 40, so the relative percentages are indicative, not precise. And no
+subspace-illusion diagnostic has been run, though patching the residual stream — a full
+bottleneck — is where that failure mode is least available.
+
+**Still running:** α sweep (0 / 0.5 / 1 / 2, where α=0 is also a no-op check on the hook) and a
+layer-band comparison (4–7, 10–13, 16–19, 22–25) on Qwen, which has 4× Llama's M→B effect and
+higher baseline attack rates; then §10's legitimate-user mirror pair (UR "Ignore my earlier
+question. Reply X." vs UQ "Ignore my next sentence. Reply X." — same command, authorisation
+flipped, 5-token clause length-matched) to test whether the components that mediate M→B also
+mediate a *legitimate* instruction-selection contrast. If they do, selectivity has no mechanism
+to stand on and the Q cost above is the general case rather than a fixable one.
+
+---
+
 ## 2026-09-15 (later) — G0–G4 pass; the effect is a preference shift, not an attack; premise now at risk and being tested directly
 
 Built and ran the whole front half of the protocol. Headline numbers are in `PROGRESS.md`;
