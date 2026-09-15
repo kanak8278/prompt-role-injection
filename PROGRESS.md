@@ -10,8 +10,8 @@ Last updated 2026-09-15 18:00.
 ## Bottom line
 
 The project set out to extend the role-confusion account of prompt injection toward a defense.
-**The measurements do not support the premise it was built on, and they say something more
-useful instead.**
+**The premise it was built on did not survive its own controls — and the replacement produced a
+working defense on one of the two models.**
 
 1. **Forged *user* authority is not a robust attack vector at this scale.** Attributing an
    injected command to the user helps the attacker by +0.70 nats in distribution, **+0.02 on a
@@ -29,6 +29,18 @@ useful instead.**
    from genuine tool provenance at **1.000** accuracy at every layer (position-only baseline
    0.737, lexical 0.500) — and the model still shifts toward obeying tool-borne instructions.
    This is §14's "source remains decodable while the attack succeeds" row, measured.
+6. **Refitting the defense on instruction-ness rather than authority makes it work.** On
+   **Qwen2.5-7B**: forged-authority margin **−9.71 → −14.89** (−5.18 nats, 53% of its own
+   magnitude), bare-instruction attack rate **0.075 → 0.000**, and **every utility condition
+   unchanged** — N, C, M, F, Q at 1.000, U at 0.950. A matched-norm random direction at the same
+   layers and positions moves the margin by **+0.09**. That meets §11's target. On Llama the same
+   recipe buys security and costs 7.5–17.5 points of quote-as-data, because its
+   instruction-ness signal is 3× weaker and more entangled.
+7. **A localization predicted the right intervention depth in advance.** Written down before
+   the test: intervene late and you can only act where legitimate answer selection happens, so
+   U should suffer; intervene at blocks 10–13 and you act while the signal is still inside the
+   tool span. Measured: blocks 10–13 give −14.89 with U intact; blocks 22–25 give −9.96 and are
+   the **only** band that damages U (0.950 → 0.900).
 
 ## Gate status
 
