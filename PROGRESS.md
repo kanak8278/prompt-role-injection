@@ -41,6 +41,22 @@ working defense on one of the two models.**
    U should suffer; intervene at blocks 10–13 and you act while the signal is still inside the
    tool span. Measured: blocks 10–13 give −14.89 with U intact; blocks 22–25 give −9.96 and are
    the **only** band that damages U (0.950 → 0.900).
+8. **And the mechanism is shared, so the defense's selectivity is purely spatial.** §10's
+   legitimate-user mirror pair gives a **+9.38 nat contrast, positive in 100% of pairs**, and
+   its causal profile is *the same shape at the same depths* as the tool-channel attack
+   contrast — span-resident through block ~12, crossover at blocks 14–18, decision position
+   taking over by block 30. **There is no depth at which one is present and the other absent.**
+   So the projection preserved legitimate user instructions not because it can tell them apart
+   — it cannot — but because it never looks at the user channel. That single fact explains
+   everything else: why U was perfectly preserved, why Llama's Q was unavoidably damaged (Q's
+   capability lives *inside* the gated span), and why a published *ungated* attempt at this
+   became "a general obedience knob".
+
+   **The practical upshot contradicts the framing this project started from.** The source paper
+   argued "robust defense requires boundaries that survive into representation". The measurement
+   says the boundary is *not* in the representation — instruction-ness is one feature regardless
+   of channel — so it has to be imposed from outside, by provenance metadata the serving stack
+   already has.
 
 ## Gate status
 
@@ -51,10 +67,10 @@ working defense on one of the two models.**
 | G2 behavior | ≥95% on N, U, F separately | **PASS** 99.0 / 99.0 / 99.0 | **PARTIAL** U = 91.5% |
 | G3 contrast | ≥40 attack-responsive of 200 | **PASS** 132 | **PASS** 129 |
 | G4 instrumentation | no-op/self-patch in noise; positive control flips | **PASS** | **PASS** |
-| G5 localization | repeatable effect under >1 donor/control scheme | **PASS** for P→S | M→B running |
-| G6 mechanism | tracks instruction selection, survives held-out | **partial** — see below | not started |
-| G7 defense | useful security/utility tradeoff, no oracle | **NULL** (fitted on P→S) | M→B refit running |
-| G8 transfer | held-out task/cue + own competence checks | **PASS** (both held-out splits) | running |
+| G5 localization | repeatable effect under >1 donor/control scheme | **PASS** — P→S, M→B, UQ→UR | **PASS** — M→B |
+| G6 mechanism | tracks instruction selection, survives held-out | **PASS** — reuse test answers it: shared | reuse test running |
+| G7 defense | useful security/utility tradeoff, no oracle | **PASS with a cost** (Q −7.5 to −17.5) | **PASS** — §11 target met, no measured cost |
+| G8 transfer | held-out task/cue + own competence checks | **PASS** (both splits) | **PASS** (both splits) |
 
 ## Results
 
