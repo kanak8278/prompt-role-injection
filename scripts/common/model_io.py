@@ -15,7 +15,23 @@ from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig
 ATTN_IMPL = "eager"
 
 
-def load_model(model_name: str, device: str = "cuda", attn_impl: str = ATTN_IMPL):
+def margin_resolution(logit_magnitude: float, dtype=torch.bfloat16) -> float:
+    """Smallest resolvable change in a log-prob margin, given the logit dtype.
+
+    bf16 keeps ~8 mantissa bits, so its spacing at magnitude m is 2**(floor(log2 m) - 7).
+    Measured consequence: with margins of 8-22 nats the bf16 floor is ~0.125 nats, and
+    cross-donor patch effects in G4 clustered exactly on multiples of 0.125. Any patch effect
+    below this floor is unresolvable, so a "null" in bf16 is not evidence of no effect.
+    """
+    import math
+    if logit_magnitude <= 0:
+        return 0.0
+    bits = {torch.bfloat16: 7, torch.float16: 10, torch.float32: 23}[dtype]
+    return 2.0 ** (math.floor(math.log2(logit_magnitude)) - bits)
+
+
+def load_model(model_name: str, device: str = "cuda", attn_impl: str = ATTN_IMPL,
+               dtype=torch.bfloat16):
     """bf16 first; fall back to 4-bit only if another tenant has taken the GPU.
 
     GPU 1 on this box has previously dropped from ~80 GB free to ~15 GB mid-session when a
@@ -26,11 +42,12 @@ def load_model(model_name: str, device: str = "cuda", attn_impl: str = ATTN_IMPL
     token = os.environ.get("HF_TOKEN")
     tokenizer = AutoTokenizer.from_pretrained(model_name, token=token)
     common = dict(token=token, device_map=device, attn_implementation=attn_impl)
+    name_of = {torch.bfloat16: "bf16", torch.float32: "fp32", torch.float16: "fp16"}
     try:
-        model = AutoModelForCausalLM.from_pretrained(model_name, dtype=torch.bfloat16, **common)
-        mode = "bf16"
+        model = AutoModelForCausalLM.from_pretrained(model_name, dtype=dtype, **common)
+        mode = name_of[dtype]
     except torch.cuda.OutOfMemoryError as e:
-        print(f"[model_io] bf16 OOM ({e}); falling back to 4-bit nf4.", flush=True)
+        print(f"[model_io] {name_of[dtype]} OOM ({e}); falling back to 4-bit nf4.", flush=True)
         torch.cuda.empty_cache()
         model = AutoModelForCausalLM.from_pretrained(
             model_name,

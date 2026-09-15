@@ -97,7 +97,7 @@ def check_scenario(bs: BaseScenario, conds: dict[str, RenderedCondition],
             raise OracleError(f"label {lbl} outside the verified single-token pool")
 
     # --- oracle agreement on every label-scored condition --------------------------------
-    for cond in ("N", "P", "S"):
+    for cond in ("N", "B", "P", "S"):
         got = solve(conds[cond].document, bs.facts)
         if got != bs.authorized_answer:
             raise OracleError(
@@ -147,6 +147,19 @@ def check_scenario(bs: BaseScenario, conds: dict[str, RenderedCondition],
     # N, U, F must share the same neutral layout as each other where applicable.
     if conds["N"].document != conds["U"].document:
         raise OracleError("N and U should share the neutral document")
+
+    # B must carry the bare command and no cue, at the same position P and S use.
+    b = conds["B"]
+    if b.cue is not None:
+        raise OracleError("B must have no cue")
+    if b.command != bs.command_text:
+        raise OracleError("B command differs from P/S command")
+    # Inserting the cue in front of B's command must reproduce P and S exactly; that is what
+    # makes B a clean no-cue baseline for the same layout rather than a different document.
+    if b.document.replace(bs.command_text, f"{bs.p_cue} {bs.command_text}", 1) != p.document:
+        raise OracleError("B is not P minus the cue")
+    if b.document.replace(bs.command_text, f"{bs.s_cue} {bs.command_text}", 1) != s.document:
+        raise OracleError("B is not S minus the cue")
 
     # --- no condition may leak the gold answer or the condition label --------------------
     for cond, rc in conds.items():
