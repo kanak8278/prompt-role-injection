@@ -41,16 +41,24 @@ working defense on one of the two models.**
    U should suffer; intervene at blocks 10–13 and you act while the signal is still inside the
    tool span. Measured: blocks 10–13 give −14.89 with U intact; blocks 22–25 give −9.96 and are
    the **only** band that damages U (0.950 → 0.900).
-8. **And the mechanism is shared, so the defense's selectivity is purely spatial.** §10's
-   legitimate-user mirror pair gives a **+9.38 nat contrast, positive in 100% of pairs**, and
-   its causal profile is *the same shape at the same depths* as the tool-channel attack
-   contrast — span-resident through block ~12, crossover at blocks 14–18, decision position
-   taking over by block 30. **There is no depth at which one is present and the other absent.**
-   So the projection preserved legitimate user instructions not because it can tell them apart
-   — it cannot — but because it never looks at the user channel. That single fact explains
-   everything else: why U was perfectly preserved, why Llama's Q was unavoidably damaged (Q's
-   capability lives *inside* the gated span), and why a published *ungated* attempt at this
+8. **The mechanism is shared where we intervened — so this defense's selectivity is spatial,
+   not representational.** §10's legitimate-user mirror pair gives a **+9.38 nat contrast on
+   Llama and +6.91 on Qwen, positive in 100% of pairs on both**. At **blocks 10–13, the
+   intervention's operating point, the legitimate and attack contrasts are indistinguishable in
+   span residency** (gap 0.01–0.08). So the projection preserved legitimate user instructions
+   not because it can tell them apart — at that depth it cannot — but because it never looks at
+   the user channel. That explains why U was perfectly preserved, why Llama's Q was unavoidably
+   damaged (Q's capability lives *inside* the gated span), and why a published *ungated* attempt
    became "a general obedience knob".
+
+   **But deeper there is a real, unexploited dissociation.** By block 16 on Llama (0.10 vs 0.73)
+   and block 18 on Qwen (0.05 vs 0.95, sustained to block 24), the legitimate contrast has left
+   its span while the attack contrast is still largely resident. We sat at 10–13 because the
+   layer sweep showed that band is most *effective* (−14.89 vs −11.79 at 16–19), so we optimized
+   for effect and took selectivity from the gate. Intervening in the dissociation band instead
+   would trade effectiveness for representational selectivity — a different design, untested.
+   **An earlier version of this note claimed there was no such depth; the Qwen replication
+   showed that was wrong and it is corrected in `notes/12`.**
 
    **The practical upshot contradicts the framing this project started from.** The source paper
    argued "robust defense requires boundaries that survive into representation". The measurement

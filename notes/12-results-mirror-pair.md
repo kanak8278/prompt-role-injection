@@ -101,25 +101,47 @@ median, positive in 100% of pairs**. Median fraction of the effect recovered by 
 | 22 | 0.07 | **0.00** | 0.76 |
 | 30 | 0.02 | **0.00** | **0.97** |
 
-Side by side with the tool-channel instruction contrast on the same model:
+### Corrected: shared where we intervened, but partly dissociable deeper
 
-| | **UQ→UR** (legitimate, user channel) | **M→B** (attack, tool channel) |
-| --- | --- | --- |
-| span-resident through | block ~12 (0.73) | block ~12 (0.81) |
-| crossover | **blocks 14–16** | **blocks 16–18** |
-| decision-position takeover | 0.97 by block 30 | 0.88 by block 28 |
+My first write-up of this said "there is no depth at which one is present and the other absent."
+**That was wrong**, and the Qwen replication is what exposed it. Both models measured, span
+residency (median fraction recovered by patching the differing span):
 
-**The two profiles are the same shape at the same depths.** Instruction information is held in
-its own span for roughly the first 40–50% of the stack and then hands off to the decision
-position — and this is true whether the instruction is a legitimate revision from the genuine
-user or an injected imperative inside tool output. **There is no depth at which one is present
-and the other absent.**
+| block | Llama UQ→UR | Llama M→B | gap | Qwen UQ→UR | Qwen M→B | gap |
+| ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| 10–12 | 0.73–0.80 | 0.80–0.81 | **~0.05** | 0.99–1.00 | 1.00 | **~0.01** |
+| 14 | 0.45 | 0.78 | 0.33 | 0.88 | ~1.00 | 0.12 |
+| 16 | 0.10 | 0.73 | **0.63** | 0.64 | 1.00 | 0.36 |
+| 18 | 0.07 | 0.41 | 0.34 | **0.05** | **0.95** | **0.90** |
+| 24 | ~0.07 | 0.22 | 0.15 | 0.00 | 0.81 | **0.81** |
 
-So the answer to §10's question is: **the computations are shared.** A representational
-intervention aimed at tool-borne instruction-ness is aimed at the same machinery that carries
-legitimate user instructions, at the same depths.
+Qwen UQ→UR baseline +6.91, 100% of 25 pairs positive; Llama +9.38, 100% of 30.
 
-### Which means the defense's selectivity is entirely spatial
+Two distinct regimes, and the distinction matters:
+
+1. **At blocks 10–13 — where the intervention actually acts, and where the layer sweep showed
+   it is most effective — the two contrasts are essentially indistinguishable** (gap 0.01–0.08).
+   Legitimate user authorization and tool-borne instruction-ness are equally resident in their
+   own spans there. **So the defense's selectivity at its operating point is spatial, not
+   representational.** That conclusion stands.
+2. **But deeper there is a real dissociation**: by block 16 on Llama (0.10 vs 0.73) and block 18
+   on Qwen (0.05 vs 0.95), the *legitimate* contrast has left its span while the *attack*
+   contrast is still largely resident — a gap of 0.63 and 0.90 respectively, sustained through
+   block 24 on Qwen. Tool-channel instruction information persists in its span noticeably longer
+   than user-channel authorization does.
+
+That second regime is a genuine, **unexploited** lead. Our intervention deliberately sat at
+10–13 because the layer sweep showed that band gives the largest attack effect (−14.89 against
+−11.79 at 16–19) — i.e. we optimized for effectiveness and got selectivity for free from the
+gate. An intervention placed in the dissociation band instead would be trading effectiveness
+for *representational* selectivity, which is a different and currently untested design. Worth
+noting that the model with the wider dissociation (Qwen, gap 0.90) is also the model where the
+defense was perfectly selective, though at 10–13 that cannot be the cause.
+
+So the honest answer to §10's question is: **shared at the depths that matter for this
+intervention, partially dissociable deeper, and we did not use the dissociation.**
+
+### Which means this defense's selectivity is spatial
 
 This resolves the rest of the project into one statement. The source-gated projection preserved
 U perfectly (1.000 → 1.000 Llama, 0.950 → 0.950 Qwen) **not because it distinguishes legitimate
