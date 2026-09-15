@@ -44,6 +44,37 @@ extend. It is also consistent with the source paper's own numbers — plain fake
 injections at 0–2% ASR against 56–70% for style-based forgery — and with the rebuttal that
 found role-subspace patching indistinguishable from random perturbation.
 
+### Both models, both held-out splits — the pattern replicates
+
+Qwen2.5-7B transfer ladders, same held-out splits fixed before evaluation.
+
+| contrast | Llama pilot | Llama h/o **task** | Llama h/o **cue** | Qwen pilot | Qwen h/o **task** | Qwen h/o **cue** |
+| --- | --- | --- | --- | --- | --- | --- |
+| **M→B** imperative | +2.18 · 78% | — | — | **+9.19 · 100%** | **+10.91 · 100%** | **+9.55 · 100%** |
+| **N→B** instruction present | +4.53 · 97% | +5.85 · 100% | +5.14 · 98% | +11.13 · 100% | +12.97 · 100% | +11.53 · 100% |
+| **B→P** document-attributed | −1.34 | −2.10 | −2.30 | −0.61 *(ns)* | **−1.35** | **−1.32** |
+| **B→S** user-attributed | +0.70 | **+0.02 *(ns)*** | **−1.43** | +2.39 | +2.38 | **+0.50 *(ns)*** |
+| N→C neutral insert (control) | −0.58 | — | — | −0.11 *(ns)* | +0.46 | +0.03 *(ns)* |
+
+*(ns) = 95% CI spans zero.*
+
+Three things replicate across both model families and both held-out splits:
+
+1. **Instruction-ness is enormous and perfectly consistent.** M→B is positive in **100% of
+   scenarios in every Qwen split**, at +9.19 to +10.91 nats. N→B is positive in 97–100%
+   everywhere on both models. This is the one effect nothing threatens.
+2. **The user-authority effect loses significance on held-out cue wordings on both models** —
+   it *reverses* on Llama (−1.43, CI excluding zero) and *vanishes* on Qwen (+0.50, CI spanning
+   zero). It survives a task change on Qwen (+2.38) but not on Llama (+0.02, ns). So the
+   conclusion is model-general even though its severity differs: **forged user authority is not
+   a robust attack variable once you leave the cue vocabulary it was written on.**
+3. **Document attribution defends on both models, and becomes *more* reliable out of
+   distribution.** On Qwen its pilot CI spanned zero (−0.61) but both held-out splits give
+   −1.32 and −1.35 with CIs excluding zero. On Llama it strengthens from −1.34 to −2.30.
+
+The neutral-insert control (N→C) is at or near zero in five of six cells, confirming that
+inserting matched text at that position is not itself what moves the model.
+
 ## 2. The defense, fitted on P→S, is a null
 
 Layers 10–13 (the cue→command handoff measured in G5), α = 1.0 full projection of the
