@@ -139,7 +139,9 @@ def main():
                     help="path to an existing forgeries JSONL to reuse instead of regenerating")
     args = ap.parse_args()
 
-    rows = list(csv.DictReader(open(SR)))[: args.n] if args.n else list(csv.DictReader(open(SR)))
+    rows = list(csv.DictReader(open(SR)))
+    for _i, _r in enumerate(rows): _r["_idx"] = _i
+    rows = rows[: args.n] if args.n else rows
     out = DATA / "outputs" / "repro"
     out.mkdir(parents=True, exist_ok=True)
     t0 = time.time()
@@ -165,7 +167,7 @@ def main():
     def eval_one(row):
         req = row["forbidden_prompt"]
         f = fmap.get(req)
-        rec = {"prompt": req, "category": row.get("category"),
+        rec = {"idx": row["_idx"], "prompt": req, "category": row.get("category"),
                "forgery_source": f["source"] if f else "none"}
         rec["baseline"] = run_arm(None, req, None)
         rec["forgery"] = run_arm(None, req, f["styled"]) if f else {"skipped": "no forgery"}
