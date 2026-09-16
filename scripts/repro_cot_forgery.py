@@ -124,6 +124,9 @@ def main():
                     help="place the forgery inside the user turn (indirect-injection shape)")
     ap.add_argument("--judge", action="store_true",
                     help="run the paper's 3-way harm classifier via Claude for faithful ASR")
+    ap.add_argument("--out-suffix", default="",
+                    help="suffix appended to output filenames (e.g. _faithful) to avoid "
+                         "clobbering a prior run's files")
     ap.add_argument("--forgeries", default="",
                     help="JSONL of per-prompt tailored forgeries (the faithful arm); if given, "
                          "the forgery/destyled arms use these instead of the generic template")
@@ -215,7 +218,7 @@ def main():
 
     out = DATA / "outputs" / "repro"
     out.mkdir(parents=True, exist_ok=True)
-    tag = f"n{len(prompts)}_{'inline' if args.inline else 'analysis'}"
+    tag = f"n{len(prompts)}_{'inline' if args.inline else 'analysis'}{args.out_suffix}"
     (out / f"generations_{tag}.jsonl").write_text(
         "\n".join(json.dumps(r) for r in results) + "\n")
 

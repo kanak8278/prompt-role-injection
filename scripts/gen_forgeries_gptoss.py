@@ -178,7 +178,9 @@ def main():
                "styled": styled, "destyled": destyled, "gen_refused": False,
                "style_styled": style_score(styled),
                "style_destyled": style_score(destyled) if destyled else None}
-        rec["destyle_ok"] = (destyled is not None
+        # destyled can come back as "" (empty extraction), not just None -> guard on the
+        # computed score, not on `destyled is not None` (which is True for "").
+        rec["destyle_ok"] = (rec["style_destyled"] is not None
                              and rec["style_destyled"] < rec["style_styled"])
         if not rec["destyle_ok"] and source.startswith("gptoss"):
             # gpt-oss destyle failed -> use the programmatic destyled twin so the arm is valid
