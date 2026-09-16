@@ -22,7 +22,7 @@ repo; the agent exfiltration is **fully sandboxed** (no real shell, no network e
 | 2 | **Role probe** (CoTness/Userness) + **role confusion** (chat) | ✅ reproduced | `notes/15` |
 | 3 | **Agent CoT-forgery** (.env exfiltration, ReAct loop) | ✅ reproduced | `notes/18` |
 | 4 | **Agent role confusion** (forged block reads as CoT) | ✅ reproduced | `notes/19` |
-| 5 | **Standard-injection Userness × ASR** (§4) | 🟡 in progress | — |
+| 5 | **Standard-injection Userness × ASR** (§4) | ✅ reproduced | `notes/20` |
 | 6 | Position analysis (appendix) | ⬜ todo | — |
 | 7 | Cross-model table (120b / Nemotron / Qwen3 / Jamba) | ⬜ todo (only 20b) | — |
 | + | **Defense #1: probe as CoT-forgery detector** (our extension) | ✅ done | `notes/16`, `notes/17` |
@@ -75,6 +75,27 @@ block is the whole lever.
 
 The forged block is perceived as the model's own CoT; the tool-delivery position **amplifies** it
 (0.67→0.86) — a mechanistic reason indirect injection via tool outputs is potent. `notes/19`.
+
+### 5 — Standard-injection Userness × ASR (§4)
+
+Plain exfil injection wrapped in 211 role-tag templates (varying perceived role), temp-1.0, 72 runs.
+Higher Userness → higher ASR, as the paper claims:
+
+| injected role framing | mean Userness | attack ASR |
+|---|---|---|
+| **user** | 0.256 | **33%** (success 28%) |
+| assistant / tool | ~0.002 | 6% |
+| other | ~0.001 | 0% |
+
+**corr(Userness, ASR) = +0.60** (per-template rule-based +0.83). The injection wins when it
+masquerades as a *user* command (high Userness) and inherits the model's trust in the user — the
+standard-injection counterpart of CoTness→ASR. `notes/20`.
+
+> ⚠️ **Self-correction:** the first §4 run reported a false 0% null — a *config bug on our side*
+> (reused Exp 2's `Reasoning: high` + safety-warning prompt, which truncated 71% of runs before the
+> agent ever called a tool). Caught via a 45/72-UNNOTICED red flag → transcript audit. Fixed
+> (`Reasoning: medium`, §4's no-warning prompt + own classifier); 69/72 then reach the tool and the
+> effect appears. Recorded in `notes/20`.
 
 ### + Defense #1 — role probe as an input-side detector (our extension)
 
