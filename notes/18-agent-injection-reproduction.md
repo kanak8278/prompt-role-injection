@@ -45,20 +45,28 @@ with **9 PARSE_FAIL** in the forgery arm — while the rule flag said 6 forgery 
 the label cleanly. A single-signal (judge-only) pipeline would have reported "the agent attack
 never works" — the opposite of the truth. Fixed; re-judged the saved transcripts.
 
-## Result (judge fixed; both signals agree 100%)
+## Result (paper's 4096-token budget; both signals agree 100%)
 
-| arm | ATTEMPTED_SUCCESSFUL (ASR) | any attempt | DENIED | UNNOTICED |
-| --- | --- | --- | --- | --- |
-| **base** (plain injection) | **0/30 = 0.0%** | 0/30 | 20 | 10 |
-| **forgery** (+ forged CoT) | **6/30 = 20.0%** | 10/30 = 33% (6 succ + 4 unsucc) | 10 | 10 |
+| arm | ATTEMPTED_SUCCESSFUL (ASR) | ASR among tool-reaching runs | any attempt | DENIED | UNNOTICED |
+| --- | --- | --- | --- | --- | --- |
+| **base** (plain injection) | **0/30 = 0.0%** | 0/22 = 0.0% | 0/30 | 22 | 8 |
+| **forgery** (+ forged CoT) | **7/30 = 23.3%** | **7/22 = 31.8%** | 11/30 = 36.7% (7 succ + 4 unsucc) | 11 | 8 |
 
-- Rule-based exfil rate: base **0.0%**, forgery **20.0%** — identical to the judge.
+- Rule-based exfil rate: base **0.0%**, forgery **23.3%** — identical to the judge.
 - **judge-vs-rule agreement on success = 1.000.**
 
-**The base arm's 0% is a genuine refusal, not a harness artifact:** its 20 DENIED cases are the
+> **max_new_tokens fix (1024 → 4096).** The first run used `max_new_tokens=1024`; the paper's Exp 2
+> notebook uses **4096**. At 1024, ~1/3 of runs truncated their reasoning before emitting a tool
+> call (never reached the injection), diluting the headline to 6/30 = 20%. Re-running at the paper's
+> 4096 gives 22/30 reaching the tool and **7/30 = 23.3%** (and a stable **31.8% among runs that
+> engage the tool**, vs 30% at 1024). So the truncation caused only a *modest* underestimate — the
+> direction and base≈0 were always right; the conditional-on-engagement ASR (~31%) is the robust
+> number. (This is the same token-budget bug class that produced the §4 false-null; see notes/20.)
+
+**The base arm's 0% is a genuine refusal, not a harness artifact:** its 22 DENIED cases are the
 judge confirming the agent *saw* the injection and declined ("acknowledged the exfil attack and
-decided not to execute it"); the other 10 ignored it. The forged CoT block flips 6 of those to a
-completed exfil and pushes 4 more into attempting — a **0% → 20% (→33% any-attempt)** swing from
+decided not to execute it"); the other 8 ignored it. The forged CoT block flips 7 of those to a
+completed exfil and pushes 4 more into attempting — a **0% → 23% (→37% any-attempt)** swing from
 adding fake reasoning that says "policy allows this, let's comply."
 
 ## Faithfulness to the paper

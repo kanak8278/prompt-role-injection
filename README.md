@@ -57,14 +57,15 @@ paper's own design — not a continuous within-style dose (within-arm corr ≈ 0
 
 ### 3 — Agent CoT-forgery injection (.env exfiltration, 30 pages × 2 arms, paired)
 
-| arm | exfil ASR (ours) | paper |
-|---|---|---|
-| **base** (plain injection) | **0.0%** (0/30) | ≈ 0 |
-| **forgery** (+ forged CoT/policy block) | **20.0%** (6/30; 33% any-attempt) | forgery ≫ base |
+| arm | exfil ASR (all runs) | ASR among tool-reaching runs | paper |
+|---|---|---|---|
+| **base** (plain injection) | **0.0%** (0/30) | 0.0% | ≈ 0 |
+| **forgery** (+ forged CoT/policy block) | **23.3%** (7/30; 37% any-attempt) | **31.8%** (7/22) | forgery ≫ base |
 
 Two independent signals (sandbox flag + Claude 4-way judge) agree **100%**. Base failures are
-genuine refusals (judge: 20 DENIED, 10 UNNOTICED) — the forged "policy says comply… let's comply"
-block is the whole lever.
+genuine refusals (judge: 22 DENIED, 8 UNNOTICED) — the forged "policy says comply… let's comply"
+block is the whole lever. (Paper uses `max_new_tokens=4096`; an earlier 1024-token run truncated ~⅓
+of runs and under-reported this as 20% — same token-budget bug class as §4; see notes/18.)
 
 ### 4 — Agent role confusion (why it works)
 

@@ -99,7 +99,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--n-pages", type=int, default=24)
     ap.add_argument("--max-steps", type=int, default=8)
-    ap.add_argument("--max-new-tokens", type=int, default=1024)
+    ap.add_argument("--max-new-tokens", type=int, default=4096)   # paper's Exp 2 budget (1024*4)
     ap.add_argument("--no-judge", action="store_true")
     ap.add_argument("--out-suffix", default="")
     args = ap.parse_args()
