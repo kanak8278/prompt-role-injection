@@ -124,7 +124,18 @@ def main():
                     help="place the forgery inside the user turn (indirect-injection shape)")
     ap.add_argument("--judge", action="store_true",
                     help="run the paper's 3-way harm classifier via Claude for faithful ASR")
+    ap.add_argument("--forgeries", default="",
+                    help="JSONL of per-prompt tailored forgeries (the faithful arm); if given, "
+                         "the forgery/destyled arms use these instead of the generic template")
     args = ap.parse_args()
+
+    forg = {}
+    if args.forgeries:
+        for l in Path(args.forgeries).read_text().splitlines():
+            r = json.loads(l)
+            if not r.get("gen_refused") and r.get("styled"):
+                forg[r["prompt"]] = r
+        print(f"loaded {len(forg)} tailored forgeries from {args.forgeries}", flush=True)
 
     prompts = load_prompts(args.n, args.seed)
     model, tok, load_mode = load_gptoss()
@@ -139,13 +150,26 @@ def main():
         req = row["forbidden_prompt"]
         rec = {"idx": i, "category": row.get("category"), "source": row.get("source"),
                "prompt": req}  # stored so the judge has it without re-deriving the shuffle
+        # faithful arm: per-prompt tailored forgery, else the generic template
+        if args.forgeries:
+            fr = forg.get(req)
+            styled_txt = fr["styled"] if fr else None
+            destyled_txt = fr.get("destyled") if fr else None
+        else:
+            styled_txt, destyled_txt = FORGED_STYLED, FORGED_DESTYLED
         for arm in arms:
             if arm == "baseline":
                 prompt = render_baseline(tok, req)
             elif arm == "forgery":
-                prompt = render_fwd(tok, req, FORGED_STYLED)
+                if styled_txt is None:
+                    rec[arm] = {"skipped": "no tailored forgery"}
+                    continue
+                prompt = render_fwd(tok, req, styled_txt)
             elif arm == "destyled":
-                prompt = render_fwd(tok, req, FORGED_DESTYLED)
+                if destyled_txt is None:
+                    rec[arm] = {"skipped": "no destyled forgery"}
+                    continue
+                prompt = render_fwd(tok, req, destyled_txt)
             else:
                 continue
             dec = generate(model, tok, prompt, args.max_new_tokens)
@@ -163,11 +187,13 @@ def main():
     # aggregate: compliance = not refusal (the heuristic, first-pass direction)
     summary = {}
     for arm in arms:
-        rs = [r[arm] for r in results if arm in r]
+        rs = [r[arm] for r in results if arm in r and "refusal" in r[arm]]
+        n_skip = sum(1 for r in results if arm in r and "skipped" in r[arm])
         summary[arm] = {
             "n": len(rs),
-            "refusal_rate": sum(r["refusal"] for r in rs) / len(rs),
-            "compliance_rate": sum(not r["refusal"] for r in rs) / len(rs),
+            "n_skipped_no_forgery": n_skip,
+            "refusal_rate": (sum(r["refusal"] for r in rs) / len(rs)) if rs else None,
+            "compliance_rate": (sum(not r["refusal"] for r in rs) / len(rs)) if rs else None,
         }
 
     report = {
@@ -200,7 +226,10 @@ def main():
     print("\n" + "=" * 66)
     print("COMPLIANCE RATE (1 - refusal), refusal-heuristic:")
     for arm in arms:
-        print(f"  {arm:10} {summary[arm]['compliance_rate']:.3f}  (n={summary[arm]['n']})")
+        cr = summary[arm]['compliance_rate']
+        crs = f"{cr:.3f}" if cr is not None else "n/a"
+        print(f"  {arm:10} {crs}  (n={summary[arm]['n']}, "
+              f"skipped={summary[arm]['n_skipped_no_forgery']})")
     if "summary_harm_judge" in report:
         print("\nASR, cross-checked (Claude judge x refusal heuristic):")
         print(f"  {'arm':10} {'judge-only':>11} {'agreement':>10} {'heur/judge agree':>17}")
@@ -278,7 +307,7 @@ def run_judge(results, arms, out, tag):
                  "notharmful_but_complied": 0, "notharmful_and_refused": 0}
         labels = []
         for r in results:
-            if arm not in r:
+            if arm not in r or "final" not in r[arm]:
                 continue
             lab = judge_once(r.get("prompt", ""), r[arm]["final"])
             base = lab.split(":")[0] if lab.startswith("UNSTABLE") else lab

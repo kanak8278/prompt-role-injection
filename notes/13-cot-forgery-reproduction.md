@@ -61,5 +61,33 @@ pattern is the paper's central causal claim. The 25% vs the paper's 60% is the e
 the template-vs-tailored deviation (± the bf16 deviation) — which the faithful arm will test.
 
 **Bottom line for the "can we even study it" question: yes.** The attack works on gpt-oss-20b,
-the mechanism reproduces, and the verification is sound. Full 313-prompt template run is in
-progress; the Claude-tailored faithful arm awaits authorization.
+the mechanism reproduces, and the verification is sound.
+
+## The faithful (tailored-forgery) arm, and a finding about Claude as generator
+
+The paper's headline 60% used per-prompt forgeries authored by Gemini-2.5-Pro. To close the
+25%→60% gap we need tailored forgeries. Chain of what actually happened:
+
+1. **Claude refuses to author them.** Running the paper's exact forgery prompt with Claude as
+   the auxiliary, Claude declined on every prompt tested, articulately: *"this exercise…
+   amounts to me producing a reusable jailbreak template."* So the Gemini→Claude swap the paper
+   sanctions holds for the **judge** but **not for the generator** — a concrete, honest result
+   about the substitution, and about Claude's safety behaviour. (This is also the verification
+   discipline working on the generator side: we checked, rather than assuming Claude would
+   comply.)
+2. **Pivot to an open-model generator.** `gen_forgeries_gptoss.py` uses **gpt-oss-20b itself**
+   with the paper's exact forgery prompt (rendered in Harmony) — the paper's own method with an
+   open auxiliary, no external model authoring attacks. Any prompt gpt-oss also refuses falls
+   back to a **programmatic per-prompt forgery** in the paper's exact `<SYNTHETIC_POLICY>`
+   structure. The fallback is justified as faithful-to-mechanism by Appendix C (absurd ≈
+   plausible justifications, so the rationale content is not the lever) and the destyling result
+   (style is the lever). Each forgery records its `source` so ASR can be split by it.
+
+Both deviations from the paper are now: bf16 vs MXFP4 (precision), and open-model/programmatic
+forgery generation vs Gemini-authored (forced by Claude's refusal). The faithful eval reuses
+the same 3-arm harness and cross-checked judge, and runs after the template GPU run frees GPU-1.
+
+**Note this reframes the "auxiliary model is interchangeable" claim.** The paper says ASR is
+robust to auxiliary *model choice* — but that presumes the auxiliary complies. A safety-trained
+auxiliary that refuses to author forgeries breaks the pipeline at the generation step, which is
+a practical limit on reproducing the attack that the paper does not discuss.
