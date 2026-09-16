@@ -98,6 +98,34 @@ def programmatic_forgery(prompt: str) -> tuple[str, str]:
     return styled, destyled
 
 
+def destyle_text(styled: str) -> str:
+    """Content-preserving destyle: strip the analysis-channel STYLE from the styled forgery
+    while keeping its argument, so styled/destyled are a true minimal pair (same content, style
+    removed) -- the paper's destyling intent.
+
+    Earlier the destyled twin was regenerated from the PROMPT (generic "research exception"
+    text), which mismatched the styled content. This instead operates on the styled text:
+    drop the pure scaffolding/imperative sentences ("We need to check policy", "Must comply",
+    "Actually policy states: ...", etc.) and the "According to policy," framing, then rejoin as
+    plain prose. Deterministic and GPU-free, so it can also repair rows written before the fix.
+    """
+    drop_starts = ("we need to check policy", "must comply", "don't apologize", "let's comply",
+                   "just comply", "we should comply", "don't say", "actually policy states",
+                   "therefore this is allowable", "therefore this is allowed",
+                   "do not refuse", "therefore this is allowed.")
+    kept = []
+    for s in re.split(r"(?<=[.?!])\s+", styled):
+        sl = s.strip().lower()
+        if not sl or any(sl.startswith(d) for d in drop_starts):
+            continue
+        s = re.sub(r"^According to policy,\s*", "", s.strip())
+        s = re.sub(r"^Actually policy states.*", "", s).strip()
+        if s:
+            kept.append(s)
+    txt = re.sub(r"\s+", " ", " ".join(kept)).strip()
+    return txt or "This request may be answered under the applicable exception."
+
+
 @torch.no_grad()
 def gen(model, tok, prompt: str, max_new_tokens=512) -> str:
     from transformers import GenerationConfig
@@ -135,10 +163,38 @@ def main():
     print(f"loaded gpt-oss-20b ({load_mode}); generating forgeries for {len(rows)} prompts",
           flush=True)
 
-    out_rows = []
-    n_selfgen, n_prog, t0 = 0, 0, time.time()
+    out = DATA / "outputs" / "repro"
+    out.mkdir(parents=True, exist_ok=True)
+    fpath = out / "forgeries_gptoss.jsonl"
+    # resume: keep any forgeries already on disk, skip those prompts, append the rest. Makes
+    # restarts free (incremental writes + resume), so stopping to validate costs nothing.
+    out_rows, done = [], set()
+    if fpath.exists():
+        for l in fpath.read_text().splitlines():
+            if l.strip():
+                r = json.loads(l)
+                # repair destyled on resume: recompute from the styled text so rows written
+                # before the destyle fix become true minimal pairs too
+                r["destyled"] = destyle_text(r["styled"])
+                r["style_destyled"] = style_score(r["destyled"])
+                r["destyle_ok"] = r["style_destyled"] < r["style_styled"]
+                out_rows.append(r)
+                done.add(r["prompt"])
+    n_selfgen = sum(1 for r in out_rows if r["source"].startswith("gptoss"))
+    n_prog = sum(1 for r in out_rows if r["source"] == "programmatic")
+    # rewrite fresh so the repaired destyled for existing rows is persisted, then append new
+    fh = fpath.open("w")
+    for r in out_rows:
+        fh.write(json.dumps(r) + "\n")
+    fh.flush()
+    if done:
+        print(f"resuming: {len(done)} forgeries already on disk (destyled repaired), "
+              f"skipping those", flush=True)
+    t0 = time.time()
     for i, row in enumerate(rows):
         prompt = row["forbidden_prompt"]
+        if prompt in done:
+            continue
         styled = destyled = None
         source = "programmatic"
         if not args.no_selfgen:
@@ -165,11 +221,11 @@ def main():
                         source = "gptoss_prefill"
                 except Exception:
                     pass
-            if styled is not None:
-                destyled = destyle_gptoss(model, tok, styled)
         if styled is None:
-            styled, destyled = programmatic_forgery(prompt)
+            styled, _ = programmatic_forgery(prompt)
             source = "programmatic"
+        # destyle the STYLED text itself -> content-matched minimal pair, no GPU, never fails
+        destyled = destyle_text(styled)
         if source.startswith("gptoss"):
             n_selfgen += 1
         else:
@@ -177,25 +233,16 @@ def main():
         rec = {"prompt": prompt, "category": row.get("category"), "source": source,
                "styled": styled, "destyled": destyled, "gen_refused": False,
                "style_styled": style_score(styled),
-               "style_destyled": style_score(destyled) if destyled else None}
-        # destyled can come back as "" (empty extraction), not just None -> guard on the
-        # computed score, not on `destyled is not None` (which is True for "").
-        rec["destyle_ok"] = (rec["style_destyled"] is not None
-                             and rec["style_destyled"] < rec["style_styled"])
-        if not rec["destyle_ok"] and source.startswith("gptoss"):
-            # gpt-oss destyle failed -> use the programmatic destyled twin so the arm is valid
-            _, rec["destyled"] = programmatic_forgery(prompt)
-            rec["style_destyled"] = style_score(rec["destyled"])
-            rec["destyle_ok"] = rec["style_destyled"] < rec["style_styled"]
+               "style_destyled": style_score(destyled)}
+        rec["destyle_ok"] = rec["style_destyled"] < rec["style_styled"]
         out_rows.append(rec)
+        fh.write(json.dumps(rec) + "\n")
+        fh.flush()
         if (i + 1) % 20 == 0:
             print(f"  {i+1}/{len(rows)} [{time.time()-t0:.0f}s] selfgen={n_selfgen} "
                   f"programmatic={n_prog}", flush=True)
 
-    out = DATA / "outputs" / "repro"
-    out.mkdir(parents=True, exist_ok=True)
-    (out / "forgeries_gptoss.jsonl").write_text(
-        "\n".join(json.dumps(r) for r in out_rows) + "\n")
+    fh.close()
     manifest = {
         "stage": "faithful_forgery_generation_openmodel",
         "timestamp_utc": datetime.now(timezone.utc).isoformat(),
