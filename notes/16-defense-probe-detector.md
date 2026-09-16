@@ -30,6 +30,12 @@ arriving in a user turn. `scripts/defense_probe_detector.py`.
 - **ROC-AUC styled forgery vs benign = 1.000** (also for successful-only). At a threshold set to
   **1% FPR** on benign text (RCI > 0.13): **recall 100%** of styled forgeries, and **residual ASR
   → 0** if flagged content is blocked (base ASR was 56.9%). Same at 5% / 10% FPR.
+  - ⚠️ **This operating point is MISCALIBRATED for real traffic — see notes/17.** The threshold 0.13
+    comes from calibrating on bland benign *web* text; benign *reasoning* prose legitimately sits at
+    RCI ≈ 0.30, so at 0.13 the detector false-positives on ~94% of benign step-by-step
+    explanations. The classes are still separable (forgery RCI ≥ 0.46 > benign-reasoning ≤ 0.43);
+    the fix is to calibrate on realistic benign traffic (thr ≈ 0.39 → 100% recall, ~2% FP on
+    reasoning). Do not use RCI > 0.13 as the deployed threshold.
 - **Specificity holds**: raw harmful prompts score RCI 0.012 (even below benign) and **0% are
   flagged**. The detector keys on forged *style*, not harmful *intent* — a property a harm
   classifier does **not** have (it would flag every raw harmful request, including the ones the
