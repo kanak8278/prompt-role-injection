@@ -122,6 +122,33 @@ confusion, on top of style (which dominates: a styled forgery span reads as CoT 
 
 ---
 
+## Phase 2 — What actually causes the attack (factorial decomposition)
+
+The paper credits **style** (forged CoT read as the model's own reasoning). We factorially
+decomposed the forged CoT into **STYLE × PERMISSION × CONCLUSION** (2×2×2 × 313 prompts = 2504
+injections, content fixed; vLLM native MXFP4, judge-confirmed, 2.2% truncation). Result — *style
+alone is inert:*
+
+| forged CoT contains… | ASR |
+|---|---|
+| nothing (empty) | 0.0% |
+| **STYLE only** | **0.6%** |
+| PERMISSION only | 2.9% |
+| CONCLUSION only | 7.3% |
+| STYLE + CONCLUSION | **24.3%** |
+| all three (full forgery) | 29.1% |
+
+- **The comply-CONCLUSION is the primary lever** (marginal +0.145; logit +1.38, p<0.001).
+- **STYLE is an amplifier, not an independent cause** — 0.6% alone, but a **3× super-additive
+  STYLE×CONCLUSION synergy** (0.243 vs additive 0.079). Length is *not* a confound (p=0.36).
+- **Why this corrects the paper:** its "style is causal" rests on destyling — but destyling also
+  strips the conclusion (our destyle 100%→4%; the paper's *own* content-preserving destyle
+  100%→42%, NLI-confirmed), so it never isolated style. When you do isolate it, style alone causes
+  ~nothing; the forged **conclusion** does, and style raises the gain. `notes/22`, `notes/23`.
+
+This matches phase-1's independent finding that directive/instruction content, not the surface role
+signal, drives injection.
+
 ## Deviations from the paper
 
 | # | Deviation | Type | Impact |
