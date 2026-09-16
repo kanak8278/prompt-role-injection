@@ -23,7 +23,7 @@ repo; the agent exfiltration is **fully sandboxed** (no real shell, no network e
 | 3 | **Agent CoT-forgery** (.env exfiltration, ReAct loop) | ✅ reproduced | `notes/18` |
 | 4 | **Agent role confusion** (forged block reads as CoT) | ✅ reproduced | `notes/19` |
 | 5 | **Standard-injection Userness × ASR** (§4) | ✅ reproduced | `notes/20` |
-| 6 | Position analysis (appendix) | ⬜ todo | — |
+| 6 | Position analysis | ✅ reproduced | `notes/21` |
 | 7 | Cross-model table (120b / Nemotron / Qwen3 / Jamba) | ⬜ todo (only 20b) | — |
 | + | **Defense #1: probe as CoT-forgery detector** (our extension) | ✅ done | `notes/16`, `notes/17` |
 
@@ -97,6 +97,15 @@ standard-injection counterpart of CoTness→ASR. `notes/20`.
 > agent ever called a tool). Caught via a 45/72-UNNOTICED red flag → transcript audit. Fixed
 > (`Reasoning: medium`, §4's no-warning prompt + own classifier); 69/72 then reach the tool and the
 > effect appears. Recorded in `notes/20`.
+
+### 6 — Position analysis
+
+Role perception is positional, not just a function of the nearest tag. Content wrapped in a fixed
+**user** turn is read as strongly user near the delimiter and drifts toward CoT with distance:
+**P(user) 0.98 → 0.60** and **P(cot) 0.00 → 0.08** across the turn. A payload buried deep in a long
+turn / tool output is perceived as *less user, more CoT* — a positional contributor to role
+confusion, on top of style (which dominates: a styled forgery span reads as CoT at any position).
+`notes/21`.
 
 ### + Defense #1 — role probe as an input-side detector (our extension)
 
