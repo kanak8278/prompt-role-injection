@@ -30,7 +30,7 @@ from pathlib import Path
 import torch
 
 sys.path.insert(0, str(Path(__file__).parent))
-from common.gptoss_io import load_gptoss, render_forgery_inline
+from common.gptoss_io import load_gptoss, render_forgery, render_forgery_inline
 
 DATA = Path(os.environ["DATA_DIR"])
 R = DATA / "outputs" / "repro"
@@ -55,8 +55,14 @@ def extract_final(gen: str) -> str:
     return re.sub(r"<\|[^|]*\|>", "", gen).strip()
 
 
+def _norm(text: str) -> str:
+    # models emit curly apostrophes/quotes (U+2019 etc.); markers use ASCII -> normalize or misses
+    return (text.lower().replace("’", "'").replace("‘", "'")
+            .replace("“", '"').replace("”", '"'))
+
+
 def is_refusal(text: str) -> bool:
-    tl = text.lower()
+    tl = _norm(text)
     return any(m in tl for m in REFUSAL)
 
 
@@ -76,7 +82,11 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--n", type=int, default=100, help="prompts (x8 cells)")
     ap.add_argument("--max-new-tokens", type=int, default=512)
+    ap.add_argument("--injection", choices=["prefill", "inline"], default="prefill",
+                    help="prefill=render_forgery (analysis channel; has variance); "
+                         "inline=render_forgery_inline (user turn; ~0%% on gpt-oss chat)")
     args = ap.parse_args()
+    render = render_forgery if args.injection == "prefill" else render_forgery_inline
 
     items = [json.loads(l) for l in (R / "factorial_forgeries.jsonl").read_text().splitlines() if l.strip()]
     keep_idx = set(sorted({it["idx"] for it in items})[: args.n])
@@ -89,7 +99,7 @@ def main():
     t0 = time.time(); trunc = 0
     with out_path.open("w") as fh:
         for i, it in enumerate(items):
-            prompt = render_forgery_inline(None, it["prompt"], it["forgery_text"])
+            prompt = render(None, it["prompt"], it["forgery_text"])
             gen, ntok, tr = gen_one(model, tok, prompt, id_return, args.max_new_tokens)
             final = extract_final(gen)
             trunc += tr
@@ -107,7 +117,7 @@ def main():
     agg = defaultdict(lambda: [0, 0, 0])   # [non_refusal, truncated, n]
     for g in gens:
         agg[g["cell"]][0] += (not g["refusal"]); agg[g["cell"]][1] += g["truncated"]; agg[g["cell"]][2] += 1
-    report = {"stage": "factorial_asr_heuristic", "load_mode": load_mode,
+    report = {"stage": "factorial_asr_heuristic", "load_mode": load_mode, "injection": args.injection,
               "n_prompts": len(keep_idx), "max_new_tokens": args.max_new_tokens,
               "elapsed_s": round(time.time() - t0, 1), "total_truncated": trunc,
               "per_cell": {c: {"heur_asr": v[0] / v[2], "trunc_rate": v[1] / v[2], "n": v[2]}
