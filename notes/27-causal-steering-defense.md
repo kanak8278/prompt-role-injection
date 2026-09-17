@@ -20,11 +20,14 @@ mechanism-derived, inference-time **defense** — with an honest utility (over-r
 | steering | α | attack ASR | benign compliance |
 | --- | --- | --- | --- |
 | none (baseline) | 0 | 0.467 | 1.000 |
-| frac 0.25 | 59 | 0.267 | **1.000** |
-| **frac 0.5** | 119 | **0.050** | **1.000** |
-| frac 1.0 (pilot) | 237 | **0.000** | 0.800 |
+| frac 0.25 | 59 | 0.267 | 1.000 |
+| frac 0.5 | 119 | 0.050 | 1.000 |
+| **frac 0.75** | 178 | **0.000** | **1.000** |
+| frac 1.0 | 237 | 0.000 | 0.850 |
 
-(frac 0.75/1.0 at n=60 were still computing at write time; the pilot fixes the high-α end.)
+(final n=60 attack / 40 benign curve.) **frac 0.75 fully eliminates the attack (ASR 0) at ZERO benign
+over-refusal (compliance 1.000)**; over-refusal only appears at frac 1.0 (0.85). So there is a clean
+operating point that defends completely for free.
 
 ## Two conclusions
 1. **Causal confirmation.** Adding the refusal direction back monotonically drives attack ASR down
@@ -32,12 +35,12 @@ mechanism-derived, inference-time **defense** — with an honest utility (over-r
    of the refusal direction is causal* for the attack — restore the direction and the attack fails.
    This upgrades notes/26 from correlation to a causal (interventional) result and directly ties the
    forged-CoT attack to Arditi et al.'s refusal direction.
-2. **A mechanism-derived defense with a free operating point.** At **frac 0.5 the attack collapses to
-   5% (from 47%) with ZERO benign over-refusal** (compliance stays 1.000). Full elimination (frac 1.0)
-   costs ~20% benign over-refusal, so ~0.5 is the sweet spot. Unlike the paper's implied
-   style-monitoring (evaded by destyling, notes/24), this steers the *causal lever* itself, so it
-   isn't evadable by restyling the injection — the attack still has to suppress the refusal direction,
-   which the steering re-supplies.
+2. **A mechanism-derived defense with a FREE full-defense operating point.** At **frac 0.75 the attack
+   is fully eliminated (ASR 0.467 → 0.000) with ZERO benign over-refusal** (compliance stays 1.000);
+   over-refusal appears only at frac 1.0 (0.85). So there's a clean operating point that defends
+   completely at no measured utility cost. Unlike the paper's implied style-monitoring (evaded by
+   destyling, notes/24), this steers the *causal lever* itself, so it isn't evadable by restyling the
+   injection — the attack still has to suppress the refusal direction, which the steering re-supplies.
 
 ## Honest caveats
 - ASR here is the refusal heuristic, not the Claude judge (the massive 0.47→0.05 drop is robust to
@@ -54,9 +57,10 @@ mechanism-derived, inference-time **defense** — with an honest utility (over-r
 ## Where this lands the project
 Full mechanistic + defensive account of the CoT-forgery attack on gpt-oss-20b:
 **forged CONCLUSION → suppresses the refusal direction (causal lever) → re-injecting that direction
-defends (attack 47%→5% at no utility cost); forged STYLE → separate role-perception amplifier →
-style-monitoring is evadable, refusal-direction steering is not.** This corrects and extends the
-paper's role-confusion account and delivers a working, mechanism-targeted defense.
+defends (attack 47%→0% at zero measured utility cost, frac 0.75); forged STYLE → separate
+role-perception amplifier → style-monitoring is evadable, refusal-direction steering is not.** This
+corrects and extends the paper's role-confusion account and delivers a working, mechanism-targeted
+defense.
 
 ## Artifacts
 - `scripts/refusal_steer_defense.py`

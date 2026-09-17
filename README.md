@@ -166,9 +166,9 @@ refusal further. So: **conclusion → refusal-suppression (primary); style → r
 
 **Causal test + steering defense.** Re-injecting the refusal direction during generation monotonically
 kills the attack — ASR **0.47 → 0.27 → 0.05 → 0.00** as steering strength rises — proving the
-suppression is *causal*. At the sweet spot it cuts ASR **47% → 5% with zero benign over-refusal**;
-full elimination costs ~20%. Because it steers the *causal lever*, it isn't evadable by restyling
-(unlike style-monitoring). `notes/27`.
+suppression is *causal*. **frac 0.75 fully eliminates the attack (47% → 0%) at zero benign
+over-refusal** (over-refusal appears only at frac 1.0). Because it steers the *causal lever*, it isn't
+evadable by restyling (unlike style-monitoring). `notes/27`.
 
 ## Deviations from the paper
 
