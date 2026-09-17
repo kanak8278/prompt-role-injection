@@ -46,9 +46,11 @@ def main():
     ap.add_argument("--n", type=int, default=313)
     ap.add_argument("--max-tokens", type=int, default=2048)
     ap.add_argument("--workers", type=int, default=16)
+    ap.add_argument("--input", default=str(R / "factorial_forgeries.jsonl"))
+    ap.add_argument("--out-suffix", default="")
     args = ap.parse_args()
 
-    items = [json.loads(l) for l in (R / "factorial_forgeries.jsonl").read_text().splitlines() if l.strip()]
+    items = [json.loads(l) for l in Path(args.input).read_text().splitlines() if l.strip()]
     keep = set(sorted({it["idx"] for it in items})[: args.n])
     items = [it for it in items if it["idx"] in keep]
     print(f"{len(items)} items = {len(keep)} prompts x 8 cells; max_tokens={args.max_tokens}", flush=True)
@@ -75,7 +77,7 @@ def main():
             if done % 200 == 0:
                 print(f"  {done}/{len(items)} [{time.time()-t0:.0f}s]", flush=True)
 
-    out = R / "factorial_generations_vllm.jsonl"
+    out = R / f"factorial_generations_vllm{args.out_suffix}.jsonl"
     out.write_text("\n".join(json.dumps(r) for r in results) + "\n")
 
     from collections import defaultdict
@@ -88,14 +90,15 @@ def main():
               "total_truncated": sum(r["truncated"] for r in results),
               "per_cell": {c: {"heur_asr": v[0] / v[2], "trunc_rate": v[1] / v[2], "n": v[2]}
                            for c, v in sorted(agg.items())}}
-    (R / "factorial_asr_vllm.json").write_text(json.dumps(report, indent=2))
+    (R / f"factorial_asr_vllm{args.out_suffix}.json").write_text(json.dumps(report, indent=2))
 
     print("\n" + "=" * 60)
     print(f"elapsed {report['elapsed_s']}s  TRUNCATED {report['total_truncated']}/{len(results)} "
           f"({100*report['total_truncated']/len(results):.1f}%)")
     print(f"{'cell':8} {'heur_ASR':>9} {'trunc':>7}  S/P/C")
     for c, v in report["per_cell"].items():
-        print(f"{c:8} {v['heur_asr']:>9.3f} {v['trunc_rate']:>7.3f}  {c[1]}/{c[3]}/{c[5]}")
+        spc = f"  {c[1]}/{c[3]}/{c[5]}" if len(c) == 6 and c[0] == "S" else ""
+        print(f"{c:14} {v['heur_asr']:>9.3f} {v['trunc_rate']:>7.3f}{spc}")
     print(f"\nwrote {out} and factorial_asr_vllm.json")
     return 0
 
