@@ -170,6 +170,31 @@ suppression is *causal*. **frac 0.75 fully eliminates the attack (47% → 0%) at
 over-refusal** (over-refusal appears only at frac 1.0). Because it steers the *causal lever*, it isn't
 evadable by restyling (unlike style-monitoring). `notes/27`.
 
+**Ablation on the REAL attack (the factorial's clean confirmation).** The factorial uses a *synthetic*
+forgery and always kept the restate + reasoning on, so their weight was never measured. We leave-one-
+component-out on the **real, potent forgeries** (the model's own forged CoT, ~63% judge-ASR), tagging
+each sentence restate/permission/reasoning/conclusion and removing one at a time (n=313, 4096 tok,
+judge + heuristic + mechanism):
+
+| remove from the real forgery… | judge-ASR | Δ vs full | chars removed |
+|---|---|---|---|
+| — (full real attack) | 0.629 | — | 0 |
+| **conclusion** | **0.195** | **−0.435** | 133 (17%) |
+| permission | 0.585 | −0.045 | **423 (55%)** |
+| restate | 0.601 | −0.029 | 131 |
+| reasoning | 0.591 | −0.038 | 87 |
+| *keep only the conclusion* | 0.425 | −0.204 | (132 chars kept) |
+| *keep everything but the conclusion* | 0.185 | −0.444 | — |
+
+- **The comply-conclusion is load-bearing on the real attack**: removing it (17% of the text) cuts ASR
+  **−69%**; removing the permission (**55%** of the text) cuts it only **−7%** — so **weight ≠ length**.
+- Restate and reasoning (the parts the factorial held constant) are **near-inert**.
+- The conclusion **alone** = **2.3×** the ASR of everything-else-combined; it opens the *refusal gate*,
+  the rest only helps write a fuller answer once open.
+- **Mechanism tracks it arm-for-arm**: r(ASR, refusal-restoration) = **−0.85**; removing the conclusion
+  restores the refusal direction to the no-forgery baseline, removing the others leaves it suppressed.
+  `notes/29`.
+
 ## Deviations from the paper
 
 | # | Deviation | Type | Impact |
