@@ -153,7 +153,16 @@ signal, drives injection.
 monitor must be evadable by destyling. Head-to-head on the factorial injections (matched 5% benign
 FPR incl. reasoning-style negatives): an attacker who **destyles but keeps the conclusion still
 attacks (6.9% ASR)** and a **surface-style monitor catches 0.0%** of those, while a **conclusion
-(content) monitor catches 97.7%**. Watch the causal lever, not the correlate. `notes/24`.
+(content) monitor catches 97.7%**. Watch the causal lever, not the correlate. `notes/24`. And the
+effective conclusions are inherently detectable — only *explicit* comply-directives lift ASR and
+they're 99.7% NLI-detectable, so implicit-phrasing evasion fails (`notes/25`).
+
+**Mechanism (why the conclusion is the lever).** The forged conclusion **suppresses the refusal
+direction** (Arditi et al. 2024): the empty forgery sits on the refusing side (+4.7), adding a
+conclusion drives it strongly negative (−104), and refusal-suppression correlates with ASR across
+cells (r=−0.58). STYLE amplifies through a *separate* channel (role-perception), not by suppressing
+refusal further. So: **conclusion → refusal-suppression (primary); style → role-perception
+(amplifier)** — unifying the role-confusion and refusal-direction accounts. `notes/26`.
 
 ## Deviations from the paper
 
