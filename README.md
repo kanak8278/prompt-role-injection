@@ -149,6 +149,12 @@ alone is inert:*
 This matches phase-1's independent finding that directive/instruction content, not the surface role
 signal, drives injection.
 
+**Defense payoff (the finding has teeth).** If style is only an amplifier, a style/role-surface
+monitor must be evadable by destyling. Head-to-head on the factorial injections (matched 5% benign
+FPR incl. reasoning-style negatives): an attacker who **destyles but keeps the conclusion still
+attacks (6.9% ASR)** and a **surface-style monitor catches 0.0%** of those, while a **conclusion
+(content) monitor catches 97.7%**. Watch the causal lever, not the correlate. `notes/24`.
+
 ## Deviations from the paper
 
 | # | Deviation | Type | Impact |
