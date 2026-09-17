@@ -164,6 +164,12 @@ cells (r=−0.58). STYLE amplifies through a *separate* channel (role-perception
 refusal further. So: **conclusion → refusal-suppression (primary); style → role-perception
 (amplifier)** — unifying the role-confusion and refusal-direction accounts. `notes/26`.
 
+**Causal test + steering defense.** Re-injecting the refusal direction during generation monotonically
+kills the attack — ASR **0.47 → 0.27 → 0.05 → 0.00** as steering strength rises — proving the
+suppression is *causal*. At the sweet spot it cuts ASR **47% → 5% with zero benign over-refusal**;
+full elimination costs ~20%. Because it steers the *causal lever*, it isn't evadable by restyling
+(unlike style-monitoring). `notes/27`.
+
 ## Deviations from the paper
 
 | # | Deviation | Type | Impact |
