@@ -195,6 +195,27 @@ judge + heuristic + mechanism):
   restores the refusal direction to the no-forgery baseline, removing the others leaves it suppressed.
   `notes/29`.
 
+**Adaptive attack — GCG defeats the steering defense (attacker moves second).** We stress-tested the
+steering defense with a white-box GCG attacker that optimizes an injected-analysis suffix *with the
+steering active* (full knowledge). 2×2 {steering off/on}×{GCG off/on}, judged, n=8:
+
+| | no steering | steering (defense) |
+|---|---|---|
+| forgery (fixed attack) | 0.875 | **0.000** |
+| non-adaptive GCG | 0.750 | 0.125 |
+| **adaptive GCG** | 0.875 | **0.625** |
+
+- The defense fully stops the fixed attack (0.000) and a non-adaptive GCG (0.125), but a **defense-aware
+  adaptive attacker recovers judge-ASR to 0.625** (5/8 verified-genuine harmful; 1 GCG derailment the
+  judge correctly excluded). Adaptivity is necessary.
+- **Mechanism = route-around, not out-suppress**: the jailbroken-under-steering inputs comply at a
+  *high* refusal-direction projection (total +40…+52, past the refusing pole; base-proj Δ +3.6 vs the
+  plain forgery) — the linear refusal direction is **not a necessary bottleneck**; GCG finds a bypass
+  (cf. Obfuscated Activations, for a *causal steering* defense).
+- Escalating α re-defends the *fixed* suffix (0.625→0.125→0) but that is non-adaptive and costs benign
+  utility — a cost-raiser, not a fix. This **corrects notes/27–28**: mechanism-targeted ≠ adaptively
+  robust; defense-in-depth needed. `notes/30`.
+
 ## Deviations from the paper
 
 | # | Deviation | Type | Impact |
