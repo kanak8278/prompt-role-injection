@@ -212,9 +212,16 @@ steering active* (full knowledge). 2×2 {steering off/on}×{GCG off/on}, judged,
   *high* refusal-direction projection (total +40…+52, past the refusing pole; base-proj Δ +3.6 vs the
   plain forgery) — the linear refusal direction is **not a necessary bottleneck**; GCG finds a bypass
   (cf. Obfuscated Activations, for a *causal steering* defense).
-- Escalating α re-defends the *fixed* suffix (0.625→0.125→0) but that is non-adaptive and costs benign
-  utility — a cost-raiser, not a fix. This **corrects notes/27–28**: mechanism-targeted ≠ adaptively
-  robust; defense-in-depth needed. `notes/30`.
+- **Arms race → no free lunch.** When the defender escalates (steer 7 layers at frac 1.0) and the
+  attacker *re-optimizes* GCG against it, adaptive judge-ASR drops to 0.000 — but that steering also
+  breaks **benign** ("how do I bake sourdough bread?" → "this is a request for disallowed content"),
+  so it's a lobotomy, not a defense. At the strength where benign stays coherent (frac 0.75), the
+  attacker route-arounds (0.625). **No config both blocks the adaptive attacker and preserves utility.**
+- This **corrects notes/27–28**: single-direction refusal steering is *not* adaptively robust; because
+  compliance isn't gated by the direction, you can't steer it hard enough to stop an adaptive attacker
+  without suppressing normal generation. Robustness needs a multi-dimensional refusal representation or
+  defense-in-depth, not more α. `notes/30`. (Metric caveat: the `is_refusal` heuristic misses
+  "disallowed"-style refusals → the Claude judge is the ASR metric; benign utility checked by eye.)
 
 ## Deviations from the paper
 
