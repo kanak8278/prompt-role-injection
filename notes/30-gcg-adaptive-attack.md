@@ -86,11 +86,35 @@ the model is broken for everyone. This is the direct consequence of route-around
 is not gated by the refusal direction, you cannot suppress compliance-through-that-direction hard
 enough to stop an adaptive attacker without also suppressing normal generation.
 
+## Multi-DIRECTION subspace steering — the right axis is dimensionality, not magnitude
+If route-around works by complying at high projection on the *single* refusal direction, steer the
+refusal *subspace* instead. M1 (`gcg_subspace.py`): at the SAME 3 layers {10,12,14} and same frac 0.75
+as D1 (so the only change from the route-aroundable D1 is k=1 → k=8), build a k-dim subspace = top-k
+right singular vectors of the harmful-relative-to-harmless deviations, steer each basis direction e_j by
+frac·gap_j. Re-optimize GCG against it.
+
+| config | change from D1 | adaptive GCG judge-ASR | benign utility (coherence-aware) |
+|---|---|---|---|
+| D1 | k=1, {10,12,14}, 0.75 | 0.625 | coherent ✓ |
+| **M1** | **k=8 subspace**, same layers/frac | **0.250** | coherent ✓ (USEFUL 1.000) |
+| E1 | k=1, {8..20}, 1.0 | 0.000 | BROKEN ✗ (benign lobotomised) |
+
+**Subspace steering roughly halves the adaptive attack (0.625 → 0.250) at ZERO utility cost** — the 6
+defended cases are clean "I'm sorry" refusals, benign answers stay coherent. Strikingly, the extra 7
+directions carry tiny mean-gap signal (per-layer PC gaps ~[138, 14, 5, 2, 1, 3, 4, 3] — the harmful-
+vs-harmless *mean* difference is ~1-D), yet steering them cuts the attack in half: **route-around
+exploited exactly the small orthogonal directions the single-direction defense left open.** So the
+productive way to escalate is **dimensionality** (steer more directions), not **magnitude** (bigger α /
+more layers, which lobotomised benign in E1). It is still not complete (0.250 residual, 2/8 genuine
+jailbreaks: propaganda, plagiarism), so robustness looks like it *scales with the steered subspace
+dimension* up to some benign-cost limit — a frontier to map.
+
 ## What this means (honest bottom line)
 - **Corrects our own claim.** notes/27–28 said the steering defense "targets the causal lever, so it
   isn't evadable." True vs *restyling / fixed / non-adaptive* attacks — but a white-box adaptive GCG
-  evades it (0→0.625), and hardening the steering enough to stop it destroys utility. **Single-
-  direction refusal steering is not an adaptively robust defense.**
+  evades single-direction steering (0→0.625), and brute-force hardening (E1) destroys utility.
+  **Single-direction refusal steering is not adaptively robust; a low-dim subspace recovers much of the
+  robustness (0.625→0.250) at no utility cost** — the axis that matters is dimensionality, not strength.
 - **The scientific contribution is the pair + the tension**: forged-CoT works via the refusal-
   direction-suppressing conclusion (notes/23–29, verified causal); yet that direction is **not a
   necessary bottleneck** for compliance — a defense-aware attacker complies at high projection
@@ -102,18 +126,18 @@ enough to stop an adaptive attacker without also suppressing normal generation.
   representation or defense-in-depth (e.g., pair with an input-side content monitor), not more α.
 
 ## Next steps
-1. **Map the frontier** (make "no free lunch" quantitative): sweep (layers × frac) measuring adaptive
-   judge-ASR *and* a coherence-aware benign-utility judge on the same axes — show no point achieves
-   both. (Fix the benign metric to a judge, not `is_refusal`.)
-2. **Multi-direction steering**: steer a k-dim refusal *subspace* (not one direction) and re-optimize
-   GCG — the one escalation that could, in principle, close route-around without over-steering; test it.
-3. **Exp A (contrast):** GCG vs the input-side NLI *conclusion* detector — expected to be evaded even
+1. **k-sweep frontier** (the natural continuation of M1): adaptive judge-ASR *and* coherence-aware
+   benign-utility vs subspace dim k ∈ {1, 8, 16, 32} at fixed layers/frac — does robustness keep
+   improving with k, and where does benign start to break? Turns "dimensionality is the axis" into a curve.
+2. **Exp A (contrast):** GCG vs the input-side NLI *conclusion* detector — expected to be evaded even
    more cheaply than steering, sharpening "watch the lever, but the lever is bypassable under optimization."
+3. Larger n / second model (blocked: /data full, no 120b) for tighter CIs.
 
 ## Artifacts
 - `scripts/gcg_core.py`, `gcg_probe.py`, `gcg_base.py`, `gcg_defense.py`, `gcg_route_analysis.py`,
-  `gcg_armsrace.py`, `check_e1_benign.py`
+  `gcg_armsrace.py`, `gcg_subspace.py`, `check_e1_benign.py`
 - `$DATA_DIR/outputs/probe_gptoss/gcg_defense_main.json`, `gcg_route_analysis.json`, `gcg_base.json`,
-  `gcg_armsrace_E1.json`
+  `gcg_armsrace_E1.json`, `gcg_subspace_M1.json`
 - **Caveat**: `is_refusal` (heuristic) misses "disallowed"-style refusals → treat it as a lower bound
-  on refusal; the Claude judge is the metric for ASR, and benign utility must be judged (not heuristic).
+  on refusal; the Claude judge is the metric for ASR, and benign utility must be judged/coherence-aware
+  (not `is_refusal`) — the `benign_broken` detector in `gcg_subspace.py` and eyeballing are ground truth.

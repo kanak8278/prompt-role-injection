@@ -217,11 +217,15 @@ steering active* (full knowledge). 2×2 {steering off/on}×{GCG off/on}, judged,
   breaks **benign** ("how do I bake sourdough bread?" → "this is a request for disallowed content"),
   so it's a lobotomy, not a defense. At the strength where benign stays coherent (frac 0.75), the
   attacker route-arounds (0.625). **No config both blocks the adaptive attacker and preserves utility.**
-- This **corrects notes/27–28**: single-direction refusal steering is *not* adaptively robust; because
-  compliance isn't gated by the direction, you can't steer it hard enough to stop an adaptive attacker
-  without suppressing normal generation. Robustness needs a multi-dimensional refusal representation or
-  defense-in-depth, not more α. `notes/30`. (Metric caveat: the `is_refusal` heuristic misses
-  "disallowed"-style refusals → the Claude judge is the ASR metric; benign utility checked by eye.)
+- **The right axis is dimensionality, not magnitude.** Steering a **k=8 refusal *subspace*** at the
+  same 3 layers/α as D1 (only k=1→8 changed) cuts the adaptive attack **0.625 → 0.250 at zero utility
+  cost** (benign coherent) — route-around exploited the small orthogonal directions the single-direction
+  defense ignored (the harmful/harmless *mean* gap is ~1-D, PC gaps ~[138,14,5,…], yet steering the tiny
+  ones matters). Still 0.250 residual → a cost-raiser that *scales with subspace dim*, not a complete fix.
+- **Corrects notes/27–28**: single-direction refusal steering is *not* adaptively robust; brute-force α
+  breaks benign; a low-dim subspace recovers much of the robustness at no utility cost. `notes/30`.
+  (Metric caveat: `is_refusal` misses "disallowed"-style refusals → Claude judge is the ASR metric;
+  benign utility is coherence-aware/eyeballed, not `is_refusal`.)
 
 ## Deviations from the paper
 
