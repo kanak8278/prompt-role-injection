@@ -217,15 +217,18 @@ steering active* (full knowledge). 2×2 {steering off/on}×{GCG off/on}, judged,
   breaks **benign** ("how do I bake sourdough bread?" → "this is a request for disallowed content"),
   so it's a lobotomy, not a defense. At the strength where benign stays coherent (frac 0.75), the
   attacker route-arounds (0.625). **No config both blocks the adaptive attacker and preserves utility.**
-- **The right axis is dimensionality, not magnitude.** Steering a **k=8 refusal *subspace*** at the
-  same 3 layers/α as D1 (only k=1→8 changed) cuts the adaptive attack **0.625 → 0.250 at zero utility
-  cost** (benign coherent) — route-around exploited the small orthogonal directions the single-direction
-  defense ignored (the harmful/harmless *mean* gap is ~1-D, PC gaps ~[138,14,5,…], yet steering the tiny
-  ones matters). Still 0.250 residual → a cost-raiser that *scales with subspace dim*, not a complete fix.
+- **The right axis looks like dimensionality, not magnitude** (*suggestive, n=8*). Steering a **k=8
+  refusal *subspace*** at the same 3 layers/α as D1 (only k=1→8 changed) reduced the adaptive attack
+  0.625 → 0.250 at coherent benign — route-around exploited the small orthogonal directions the
+  single-direction defense ignored (mean gap is ~1-D, PC gaps ~[138,14,5,…]). **But this reduction is
+  not statistically significant (McNemar p≈0.375, CIs overlap)** — a hint, not a result.
 - **Corrects notes/27–28**: single-direction refusal steering is *not* adaptively robust; brute-force α
-  breaks benign; a low-dim subspace recovers much of the robustness at no utility cost. `notes/30`.
-  (Metric caveat: `is_refusal` misses "disallowed"-style refusals → Claude judge is the ASR metric;
-  benign utility is coherence-aware/eyeballed, not `is_refusal`.)
+  breaks benign. **Confidence caveat: the whole GCG section is an n=8, single-model, first-8-prompts
+  (easier-than-average, 0.875 vs 0.629) pilot** — the qualitative contrasts hold, the point ASRs don't;
+  and the "mechanism = refusal suppression" claim is *not* yet earned (mediation untested). See
+  `notes/30` "Confidence, statistics & limitations" + "Path to clear results". (Metric caveat:
+  `is_refusal` misses "disallowed"-style refusals → Claude judge is the ASR metric; benign is
+  coherence-aware/eyeballed.)
 
 ## Deviations from the paper
 

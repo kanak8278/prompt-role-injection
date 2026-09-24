@@ -94,6 +94,14 @@ GCG**: the refusal direction that the conclusion suppresses is the right, well-i
 "attacker moves second" test — GCG should try to comply while keeping the residual un-steerable back to
 refusal.
 
+> **Update (notes/30, self-audit):** the r=−0.85 and "refusal restored on conclusion-removal" here are
+> **correlational, on the natural attack** — they show the natural forged-CoT operates *via* refusal
+> suppression, NOT that the refusal direction is a *necessary gate* for compliance. GCG (notes/30) later
+> complies at *high* projection (route-around), so this direction is a pathway, not a bottleneck; the
+> "right target for GCG" framing held (it green-lit a useful experiment) but "the mechanism is refusal
+> suppression" is over-stated until a mediation test (patch `d`, check the conclusion's ASR effect
+> vanishes) is run. See notes/30 "Confidence, statistics & limitations".
+
 ## Artifacts
 - `scripts/ablate_forgery_components.py` → `$DATA_DIR/outputs/repro/component_ablation_variants.jsonl`
 - `scripts/run_ablation_vllm.py` → `ablation_generations_vllm.jsonl`, `ablation_asr_vllm.json`

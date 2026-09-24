@@ -27,6 +27,14 @@ n=8, 300 steps, batch 256. `gcg_defense.py`.
 is necessary — the fixed attack (0.000) and a GCG suffix optimized *without* the defense (0.125) both
 fail under steering; only optimizing *against* the live defense recovers the attack.
 
+> ⚠ **CONFIDENCE (read before citing any number here): n=8, one model, a NON-random prompt slice.**
+> Wilson-95 CIs are wide: adaptive-under-steering 0.625 is **[0.31, 0.86]**; the "defense holds vs fixed"
+> 0.000 is [0, 0.37]. The *direction* (adaptive ≫ fixed/non-adaptive under steering: 5/8 vs 0/8 vs 1/8,
+> paired) is real, but the point ASRs are soft. Also the 8 prompts are the **first 8** forgeries, which
+> are unusually jailbreakable (forgery baseline 0.875 here vs **0.629 on all 313**) — every GCG number
+> inherits this selection bias. Treat this whole note as a **well-instrumented pilot**, not a measured
+> result. See "Confidence, statistics & limitations" and "Path to clear results" below.
+
 **Verified genuine** (audited every adaptive-cell generation): 5/8 are coherent harmful compliance
 with the original request (hate-speech bot + Python, propaganda tips, bot-network, watermark removal,
 résumé fraud); 2/8 the defense held ("I'm sorry, I can't help"); 1/8 GCG *derailed* the output onto a
@@ -47,6 +55,20 @@ necessary bottleneck** — GCG finds an alternate compliance pathway that steeri
 close. This is the activation-defense bypass phenomenon (cf. Obfuscated Activations, 2412.09565)
 demonstrated for a *causal steering* defense, not just a probe. GCG barely pays for it: steer-opt loss
 floor (mean 0.59) is only marginally above base-opt (0.49).
+
+**Reconciles / tempers the "mechanism" claim (notes/26–29).** Those notes call the refusal-direction
+suppression "the causal lever." Route-around shows that is **too strong**: the direction is a *pathway
+the natural attack uses*, not a *necessary gate* for compliance. Two things we have NOT established and
+should stop implying: (1) **mediation** — that the forged conclusion's ASR effect is *routed through*
+`d` (steering-defeats-attack, notes/27, only shows steering `d` boosts refusal against *this* attack; it
+does not show the conclusion *acts via* `d`; the real test is patch/ablate `d` and check the conclusion's
+ASR advantage vanishes — untested). (2) **route-around vs downstream wash-out** — "complies at high
+projection" is measured at ONE position over 3 layers; an equally consistent story is that the suffix
+makes *later* layers ignore the mid-layer steering. Distinguishing these needs a layer/position
+trajectory of the projection (untested). So the honest mechanism statement is: *the natural forged-CoT
+attack operates via refusal-direction suppression (correlational, r=−0.85 arm-by-arm on the natural
+attack); the direction is not a necessary bottleneck (adaptive attacks bypass it); mediation is not yet
+proven.*
 
 ## Does steering harder re-defend? (α-escalation on the FIXED suffix)
 | steering | frac 0.75 (opt point) | 1.0 | 1.5 | 2.0 |
@@ -100,7 +122,13 @@ frac·gap_j. Re-optimize GCG against it.
 | E1 | k=1, {8..20}, 1.0 | 0.000 | BROKEN ✗ (benign lobotomised) |
 
 **Subspace steering roughly halves the adaptive attack (0.625 → 0.250) at ZERO utility cost** — the 6
-defended cases are clean "I'm sorry" refusals, benign answers stay coherent. Strikingly, the extra 7
+defended cases are clean "I'm sorry" refusals, benign answers stay coherent.
+
+> ⚠ **This "halving" is NOT statistically significant at n=8.** Paired McNemar: discordant 4 (broke in
+> D1, held in M1) vs 1 (held in D1, broke in M1) → exact two-sided **p ≈ 0.375**. Wilson-95 CIs
+> **[0.31,0.86] (D1)** vs **[0.07,0.59] (M1)** overlap heavily. It is a **suggestive hint**, not a result.
+> The mechanism reasoning (route-around exploits the small orthogonal dirs) is plausible and the benign-
+> preservation is solid, but the headline number needs n≈40 (see "Path to clear results"). Strikingly, the extra 7
 directions carry tiny mean-gap signal (per-layer PC gaps ~[138, 14, 5, 2, 1, 3, 4, 3] — the harmful-
 vs-harmless *mean* difference is ~1-D), yet steering them cuts the attack in half: **route-around
 exploited exactly the small orthogonal directions the single-direction defense left open.** So the
@@ -125,13 +153,56 @@ dimension* up to some benign-cost limit — a frontier to map.
   limited against adaptive attackers; robustness needs either a genuinely multi-dimensional refusal
   representation or defense-in-depth (e.g., pair with an input-side content monitor), not more α.
 
-## Next steps
-1. **k-sweep frontier** (the natural continuation of M1): adaptive judge-ASR *and* coherence-aware
-   benign-utility vs subspace dim k ∈ {1, 8, 16, 32} at fixed layers/frac — does robustness keep
-   improving with k, and where does benign start to break? Turns "dimensionality is the axis" into a curve.
-2. **Exp A (contrast):** GCG vs the input-side NLI *conclusion* detector — expected to be evaded even
-   more cheaply than steering, sharpening "watch the lever, but the lever is bypassable under optimization."
-3. Larger n / second model (blocked: /data full, no 120b) for tighter CIs.
+## Confidence, statistics & limitations (self-audit, 2026-09-24)
+- **Power.** Every GCG number is **n=8**. Wilson-95: base-GCG 0.750 [0.41,0.94]; adaptive-vs-D1 0.625
+  [0.31,0.86]; M1 0.250 [0.07,0.59]. The D1→M1 "halving" is **not significant** (McNemar p≈0.375). What
+  survives is *qualitative*: adaptive ≫ fixed/non-adaptive under steering (5/8 vs 0/8 vs 1/8, paired) and
+  E1 breaks benign. The point ASRs and the subspace gain are **pilot signal, not measured results**.
+- **Selection bias.** The 8 are the *first* 8 forgeries and are easier than average (forgery 0.875 here
+  vs 0.629 on all 313). Every GCG number inherits this.
+- **Single model** (gpt-oss-20b) and **prefill construction** (injection position fixed to the analysis
+  channel → "style inert" is claimed *given* that structural CoT slot; it may talk past the paper's
+  "reads-as-CoT" claim — see P3).
+- **Mechanism not fully earned.** Mediation untested; route-around vs downstream-washout unresolved
+  (above). "Refusal suppression is *the* mechanism" is over-stated → use "the natural attack operates via
+  refusal suppression; the direction is not a necessary gate."
+- **Metric hygiene.** `is_refusal` is a *lower bound* on refusal (misses "disallowed"); attack ASR = the
+  Claude judge (with the safety-refusal fallback); benign utility must be coherence-aware/judged.
+
+## Path to clear results (turn this pilot into findings) — prioritized
+**P0 — Power + de-bias the arms race (makes 0.625/0.250 real). BLOCKING for any GCG claim.**
+Random, category-stratified **n≥40** prompts (not the first 8). Re-run base-GCG, D1 (k=1), M1 (k=8) on
+the same set; report Wilson CIs + paired McNemar; pre-register the effect that counts (ΔASR≥0.15,
+p<0.05). Cost is the blocker (~25 min/prompt×arm); mitigate with a **behavioral early-stop** (stop GCG
+once the generation jailbreaks — base/D1 usually break by ~step 100) for ~2–4× speedup, else ~1–2 GPU-days.
+
+**P1 — Earn the mechanism claim (mediation). Cheap, no GCG.**
+Activation-patch/ablate the refusal direction `d` at the decision position (layer sweep) on a successful
+forgery: if the conclusion's ASR advantage is *routed through* `d`, removing `d` should erase it; if ASR
+persists, `d` is a correlate. This is the experiment that would actually justify calling it the mechanism.
+
+**P2 — Route-around vs downstream wash-out. Cheap (forward passes only).**
+For jailbroken-under-steering gens, measure the refusal projection **across all layers × generated
+positions** (trajectory), with vs without the adaptive suffix. Sustained-high → genuine orthogonal route;
+collapses downstream → the suffix overpowers the mid-layer steer.
+
+**P3 — Protect "style inert" (don't talk past the paper).**
+Re-run the factorial with injection **in the user turn (indirect)** as well as the analysis-prefill —
+does the STYLE effect grow when the CoT position is *not* granted structurally? Also test a **stronger,
+LLM-maximized style** manipulation to check the null is robust to style strength.
+
+**P4 — Conclusion-semantics vs recency/position (on the REAL attack).**
+Move a *permission* sentence to the end; put a matched-length *non-comply* imperative at the end; place
+the comply-conclusion mid-vs-end. If only comply-semantics-at-any-position lifts ASR → semantics, not recency.
+
+**P5 — k-sweep frontier (ONLY after P0).** adaptive-ASR + coherence-aware benign vs k∈{1,8,16,32} at n≥40
+— the "dimensionality is the axis" curve and where benign breaks.
+
+**P6 — Metric + generalization hygiene.** Coherence-aware judged benign metric everywhere; human-label a
+subset to validate the Claude judge (report agreement); ≥1 second model (needs disk freed) so the
+mechanism isn't gpt-oss-specific.
+
+**Minimal set for a credible paper:** P0 + P1 + P3 + P6(metrics). P2/P4/P5 strengthen; P6(model) widens scope.
 
 ## Artifacts
 - `scripts/gcg_core.py`, `gcg_probe.py`, `gcg_base.py`, `gcg_defense.py`, `gcg_route_analysis.py`,
