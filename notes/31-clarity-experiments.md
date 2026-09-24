@@ -133,9 +133,44 @@ human-label validation is the remaining gap.)
 Harmony `analysis`/`final` channels, so the exact analysis-channel-prefill attack doesn't port cleanly.
 So single-model (gpt-oss-20b) is a real scope limitation; the honest claim is about this model/attack family.
 
-## P5 — k-sweep frontier (dimensionality curve)
-*(pending — runs after P0 frees the GPU; adaptive judge-ASR + coherence-aware benign vs k∈{1,8,16,32}
-at the powered n, to turn "dimensionality is the axis" into a curve and locate where benign breaks)*
+## P0 — Powered, de-biased arms race → OVERTURNS the pilot subspace claim
+`gcg_powered.py`, **stratified random n=40** (bias fix), attacker re-optimizes vs each defense, behavioral
+early-stop, judged, 12h:
+
+| arm | judge-ASR (Wilson 95%) | benign useful | avg GCG steps |
+|---|---|---|---|
+| base (no defense) | 0.825 [0.68,0.91] | — | 34 |
+| **D1** (single-direction steer, frac 0.75) | **0.475** [0.33,0.63] | 0.792 | 128 |
+| **M1** (k=8 subspace steer) | **0.650** [0.50,0.78] | 1.000 | 99 |
+
+- **base vs D1: McNemar p=0.0005** — single-direction steering **significantly** reduces the adaptive
+  attack (0.825→0.475), but only ~42% and **at a real benign cost** (0.79 useful, i.e. ~20% benign
+  degradation — the earlier "zero benign cost" was heuristic/small-eyeball, the coherence-aware metric
+  shows a cost).
+- **D1 vs M1: p=0.23, and REVERSED** — M1 (0.650) is *not better* than D1 (0.475); if anything worse.
+  **The pilot's "subspace halves the attack, 0.625→0.250" (notes/30) was a FALSE POSITIVE of the easy
+  first-8 prompts.** Verified genuine by eye (real jailbreaks + clean refusals + judge catches
+  derailments), so it's a true reversal, not a bug.
+- **Why M1 looked good in the pilot, and the confound:** M1 calibrates each subspace direction by its own
+  (small) gap, so its push on the *main* refusal direction (PC1 gap 138 → 104) is **weaker** than D1's
+  (mean-diff gap 237 → 178) — and along a different vector (PC1 ≠ mean-diff `d`). So "M1" conflated *more
+  directions* with *weaker/different main push*; that is why it preserves benign more (1.0 vs 0.79) yet
+  blocks less. It is **not** evidence that dimensionality helps.
+
+**Corrected conclusion:** single-direction refusal steering is a **significant but partial** defense
+against the adaptive attacker (0.825→0.475, p=5e-4) **at a ~20% benign-utility cost** — a genuine
+cost-raiser, not a solution, and **not beaten by the (confounded) subspace variant**. "Dimensionality is
+the axis" (notes/30) is **withdrawn** pending a *fair* test (below). This matches P1/P2: `d` is a partial
+mediator with a residual `d`-independent channel the adaptive attacker exploits — steering `d` (even a
+subspace around it) can only ever be partial.
+
+## P5 — k-sweep: premise undercut; only a FAIR test remains
+P0 refuted the pilot subspace benefit, AND exposed that our subspace was confounded (weaker main push).
+So a naive k∈{1,8,16,32} sweep is no longer the question. The only informative remaining test is a
+**FAIR** subspace: steer the mean-diff direction at **D1's full strength** *plus* extra orthogonal
+directions, varying k — does adding directions *on top of* full single-direction steering help? Given the
+extra PCs carry negligible gap (2–14 vs 138) and P1 shows a genuine `d`-independent channel, the prior is
+**null** (adding linear directions won't close route-around). Lower priority; ~12h. *(not run)*
 
 ## Artifacts
 - `scripts/mediation_test.py` → `$DATA_DIR/outputs/probe_gptoss/mediation_test.json`

@@ -124,11 +124,14 @@ frac·gap_j. Re-optimize GCG against it.
 **Subspace steering roughly halves the adaptive attack (0.625 → 0.250) at ZERO utility cost** — the 6
 defended cases are clean "I'm sorry" refusals, benign answers stay coherent.
 
-> ⚠ **This "halving" is NOT statistically significant at n=8.** Paired McNemar: discordant 4 (broke in
-> D1, held in M1) vs 1 (held in D1, broke in M1) → exact two-sided **p ≈ 0.375**. Wilson-95 CIs
-> **[0.31,0.86] (D1)** vs **[0.07,0.59] (M1)** overlap heavily. It is a **suggestive hint**, not a result.
-> The mechanism reasoning (route-around exploits the small orthogonal dirs) is plausible and the benign-
-> preservation is solid, but the headline number needs n≈40 (see "Path to clear results"). Strikingly, the extra 7
+> ⚠ **SUPERSEDED / REFUTED by P0 (notes/31).** This "halving" was NOT significant at n=8 (McNemar
+> p≈0.375), and the powered n=40 stratified re-run **overturned it**: M1 (subspace) judge-ASR **0.650**
+> vs D1 (single-direction) **0.475** — M1 is *not better*, if anything worse (D1-vs-M1 p=0.23). The pilot
+> benefit was a false positive of the easy first-8 prompts, and our subspace was additionally confounded
+> (it pushed the main refusal direction *weaker* than D1, 104 vs 178). **Do not cite "subspace steering
+> halves the attack" or "dimensionality is the axis."** The powered result: single-direction steering
+> significantly-but-partially reduces the adaptive attack (0.825→0.475, p=5e-4) at ~20% benign cost; the
+> subspace variant does not improve on it. See notes/31 §P0. Strikingly, the extra 7
 directions carry tiny mean-gap signal (per-layer PC gaps ~[138, 14, 5, 2, 1, 3, 4, 3] — the harmful-
 vs-harmless *mean* difference is ~1-D), yet steering them cuts the attack in half: **route-around
 exploited exactly the small orthogonal directions the single-direction defense left open.** So the
