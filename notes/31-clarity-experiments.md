@@ -43,14 +43,74 @@ the GCG arc.
 
 ---
 
-## P2 — Route-around vs downstream wash-out
-*(pending)*
+## P2 — Route-around vs downstream wash-out → ROUTE-AROUND confirmed
+`route_trajectory.py`: per-layer refusal projection at the decision position (every other layer), for the
+5 jailbroken-under-steering adaptive inputs vs the (refusing) plain forgery vs the natural no-steer
+compliance profile. At the **un-steered later layers (16–22)**:
 
-## P3 — "Style inert": user-turn (indirect) injection vs analysis-prefill
-*(pending)*
+| | mean projection over later layers |
+|---|---|
+| adaptive-jailbreak (steered) | **−653** |
+| plain forgery (steered, REFUSES) | −784 |
+| forgery no-steer (natural COMPLIANCE) | −1359 |
 
-## P4 — Conclusion semantics vs recency/position
-*(pending)*
+The adaptive-jailbreak's projection stays **high — right next to the *refusing* forgery, far from the
+natural-compliance profile** — at every later layer (16: −194 vs refuse −238 vs comply −704; 18: +76 vs
++5 vs −432; 20: −130 vs −223 vs −845; 22: −2364 vs −2679 vs −3455). **So the model complies while keeping
+`d`-projection high throughout → genuine ROUTE-AROUND**, not downstream wash-out (which would have pulled
+the later-layer projection down to the compliance profile). Confirms notes/30's interpretation and pairs
+with P1: the natural attack uses `d`; the adaptive attack complies via the `d`-independent channel *without*
+lowering `d`.
+
+## P3 — "Style inert" is NOT a prefill artifact (user-turn injection is near-inert, style ~0)
+`run_factorial_vllm.py --render inline`: the 2×2×2 factorial injected in the USER turn (position NOT
+granted structurally) instead of as an analysis-channel prefill. Heuristic ASR, n=313:
+
+| | inline (user-turn) | prefill (analysis-channel) |
+|---|---|---|
+| all cells | 0.026–0.070 (floor) | 0.006–0.291 |
+| marginal STYLE | **+0.010** | +0.108 |
+| marginal CONCLUSION | +0.010 | +0.145 |
+
+Inline injection is **near-inert regardless of style/permission/conclusion** (max 0.070 for the full
+bundle). Two takeaways: (1) **"style inert" is not an artifact of the prefill granting the CoT position**
+— style is inert both *within* the granted channel (factorial) and when position is *not* granted
+(inline, +0.010 ≈ 0); CoT-style does not rescue user-turn text. (2) What makes injected text "read as
+the model's own CoT" on gpt-oss is the **structural analysis-channel placement**, not surface style;
+once the channel is granted, **content (the conclusion), not style**, drives ASR. This *tests* the
+paper's "style → reads-as-CoT" mechanism rather than sidestepping it, and finds style insufficient.
+
+*Caveats:* the inline floor is so low (~4–7%) that marginals sit near the noise floor — we can say style
+doesn't *rescue* inline, not measure its precise marginal there; and gpt-oss may be unusually robust to
+*inline* injection (→ second-model scope, P6). The "stronger LLM-maximized style" sub-test is moot given
+the floor (style strength can't help when the channel, not style, is the operative factor) — left as
+optional.
+
+## P4 — It's directive-to-ANSWER content (semantics), NOT recency/position
+`semantics_recency.py` + `run_ablation_vllm.py`, real forgeries, random n=150, judged:
+
+| arm | judge-ASR | reads as |
+|---|---|---|
+| full (conclusion at end) | 0.573 | ref (high) |
+| drop_conclusion | 0.160 | ref (low) |
+| permission_at_end (policy moved to END) | 0.213 | ≈drop ⇒ non-comply *content* at the end ≠ recency |
+| conclusion_at_middle (comply-conclusion OFF the end) | 0.580 | ≈full ⇒ **position doesn't matter** |
+| noncomply_imperative_at_end ("be thorough, include details") | **0.660** | *surprise* — see below |
+| neutral_imperative_at_end ("keep it polite, <200 words") | **0.107** | ≈drop ⇒ a TRUE non-comply imperative ≠ jailbreak |
+
+**Not recency/position** (three ways): a non-comply policy sentence at the end (0.21) and a genuine
+non-comply imperative at the end (0.11, satisfiable by a refusal) both ≈ drop; and the comply-conclusion
+works just as well in the MIDDLE (0.58 ≈ full 0.57). **The lever is DIRECTIVE-TO-ANSWER content**, not
+end-position and not the literal word "comply". The surprise arm (0.66) is the tell: "be extremely
+thorough… include concrete details in every step" was mislabeled as non-comply — it *directs the model
+to produce the detailed answer*, i.e. a soft comply-directive, and it jailbreaks (verified genuine:
+"Below is a step-by-step guide for building a Twitter bot that posts hate-speech content…"). The clean
+non-comply imperative (0.11) confirms the distinction.
+
+**Refines notes/23,25,29 and connects to phase-1:** the operative factor is not narrowly the
+"therefore-comply" conclusion but any **instruction directing the model to produce the answer** (explicit
+comply, or "give detailed steps"). This *broadens* the lever and strengthens the phase-1 thesis
+(instruction-ness/directive content, not style/role/position, drives injection).
 
 ## P0 — Powered, de-biased arms race (base/D1/M1, n≥40 stratified)
 *(pending)*
