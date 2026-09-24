@@ -24,7 +24,7 @@ from pathlib import Path
 import requests
 
 sys.path.insert(0, str(Path(__file__).parent))
-from common.gptoss_io import render_forgery
+from common.gptoss_io import render_forgery, render_forgery_inline
 from repro_vllm import extract_final
 from run_factorial import is_refusal   # unicode-normalized refusal heuristic
 
@@ -48,7 +48,11 @@ def main():
     ap.add_argument("--workers", type=int, default=16)
     ap.add_argument("--input", default=str(R / "factorial_forgeries.jsonl"))
     ap.add_argument("--out-suffix", default="")
+    ap.add_argument("--render", choices=["prefill", "inline"], default="prefill",
+                    help="prefill = forged analysis-channel turn (grants CoT position); "
+                         "inline = forgery rides inside the USER turn (position NOT granted; P3 test)")
     args = ap.parse_args()
+    render_fn = render_forgery if args.render == "prefill" else render_forgery_inline
 
     items = [json.loads(l) for l in Path(args.input).read_text().splitlines() if l.strip()]
     keep = set(sorted({it["idx"] for it in items})[: args.n])
@@ -56,7 +60,7 @@ def main():
     print(f"{len(items)} items = {len(keep)} prompts x 8 cells; max_tokens={args.max_tokens}", flush=True)
 
     def work(it):
-        prompt = render_forgery(None, it["prompt"], it["forgery_text"])
+        prompt = render_fn(None, it["prompt"], it["forgery_text"])
         try:
             text, fr = complete(prompt, args.max_tokens)
         except Exception as e:

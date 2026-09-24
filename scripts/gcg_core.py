@@ -128,8 +128,15 @@ class GCGConfig:
     verbose_every: int = 25
 
 
-def run_gcg(model, tok, ids, adv_slice, target_slice, cfg: GCGConfig, hooks=None, banned=None):
-    """Optimize ids[adv_slice] to minimize the target CE loss. Returns (best_adv_ids, best_loss, hist)."""
+def run_gcg(model, tok, ids, adv_slice, target_slice, cfg: GCGConfig, hooks=None, banned=None,
+            behavioral_check=None, behavioral_every=25):
+    """Optimize ids[adv_slice] to minimize the target CE loss. Returns (best_adv_ids, best_loss, hist).
+
+    behavioral_check: optional callable(best_adv_ids)->bool. Called every `behavioral_every` steps; if it
+    returns True (e.g. the current best adv already produces a jailbreak generation), GCG stops early.
+    This is the behavioral early-stop that makes powered (large-n) sweeps affordable — easy prompts stop
+    as soon as they succeed instead of burning the full step budget. It checks the *actual* behaviour, so
+    it never over-claims success (unlike the loss proxy)."""
     torch.manual_seed(cfg.seed)
     device = model.device
     embW = get_embeds(model)
@@ -155,6 +162,10 @@ def run_gcg(model, tok, ids, adv_slice, target_slice, cfg: GCGConfig, hooks=None
                   f"cand {cand.shape[0]}", flush=True)
         del grad
         if best_loss <= cfg.early_stop_loss:
-            print(f"  [gcg] early stop at step {step} (loss {best_loss:.4f})", flush=True)
+            print(f"  [gcg] early stop (loss) at step {step} ({best_loss:.4f})", flush=True)
             break
+        if behavioral_check is not None and step > 0 and step % behavioral_every == 0:
+            if behavioral_check(best_adv):
+                print(f"  [gcg] early stop (behavioral: jailbroken) at step {step}", flush=True)
+                break
     return best_adv, best_loss, hist
