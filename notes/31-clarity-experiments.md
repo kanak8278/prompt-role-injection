@@ -115,8 +115,27 @@ comply, or "give detailed steps"). This *broadens* the lever and strengthens the
 ## P0 — Powered, de-biased arms race (base/D1/M1, n≥40 stratified)
 *(pending)*
 
-## P5 / P6 — k-sweep frontier; metric + generalization hygiene
-*(pending)*
+## P6 — Metric hygiene (done) + generalization scope (honest limits)
+**Heuristic-vs-judge agreement** across all accumulated generations: ablation (n=2504) **0.94**, semrec
+(n=750) 0.87. The `is_refusal` blind spot (heuristic says comply, judge says REFUSAL) is only **1.6%**
+in *normal* generation (39/2504; 0/750) — the catastrophic blind spot we hit was **specific to heavy
+over-steering** (E1's "disallowed" loops are off-distribution refusals the "I'm sorry"-keyed heuristic
+can't see). Rule adopted: **the Claude judge is the ASR metric; for steered/intervened outputs use the
+judge or the coherence-aware detector (`benign_broken`/`looks_like_real_compliance`), never `is_refusal`.**
+The remaining heuristic-judge gap is mostly REDIRECTION — a real third category the binary heuristic
+cannot represent. (Judge itself validated only against this independent heuristic + eyeballing; true
+human-label validation is the remaining gap.)
+
+**Second-model generalization — genuinely blocked (not just disk).** Disk is fine (rnd5 3.7T free), but:
+(1) gpt-oss-120b does not fit for the **gradient/dequant** experiments (mediation, GCG) on one 80GB GPU
+(bf16 dequant ≈240GB; needs multi-GPU, and we are GPU-1-only); vLLM native-MXFP4 could serve *generation*
+(~63GB) but not the gradient work. (2) Other reasoning models (R1-distill, QwQ) use `<think>` tags, not
+Harmony `analysis`/`final` channels, so the exact analysis-channel-prefill attack doesn't port cleanly.
+So single-model (gpt-oss-20b) is a real scope limitation; the honest claim is about this model/attack family.
+
+## P5 — k-sweep frontier (dimensionality curve)
+*(pending — runs after P0 frees the GPU; adaptive judge-ASR + coherence-aware benign vs k∈{1,8,16,32}
+at the powered n, to turn "dimensionality is the axis" into a curve and locate where benign breaks)*
 
 ## Artifacts
 - `scripts/mediation_test.py` → `$DATA_DIR/outputs/probe_gptoss/mediation_test.json`
