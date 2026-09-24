@@ -164,13 +164,46 @@ the axis" (notes/30) is **withdrawn** pending a *fair* test (below). This matche
 mediator with a residual `d`-independent channel the adaptive attacker exploits — steering `d` (even a
 subspace around it) can only ever be partial.
 
-## P5 — k-sweep: premise undercut; only a FAIR test remains
-P0 refuted the pilot subspace benefit, AND exposed that our subspace was confounded (weaker main push).
-So a naive k∈{1,8,16,32} sweep is no longer the question. The only informative remaining test is a
-**FAIR** subspace: steer the mean-diff direction at **D1's full strength** *plus* extra orthogonal
-directions, varying k — does adding directions *on top of* full single-direction steering help? Given the
-extra PCs carry negligible gap (2–14 vs 138) and P1 shows a genuine `d`-independent channel, the prior is
-**null** (adding linear directions won't close route-around). Lower priority; ~12h. *(not run)*
+## P5 — dimensionality is NULL BY CONSTRUCTION (the mean separation is exactly 1-D)
+Instead of a 3h fair-subspace GCG (whose premise P0 already refuted), we settled it structurally. The
+harmful−harmless **mean** difference at each steer layer is a single vector `diff = mean_h − mean_l`, and
+`d = diff/|diff|`. For ANY direction `e ⟂ d`, the class mean-gap is `diff·e = |diff|(d·e) = 0`. Empirically
+confirmed (orthogonalize the top-8 PCs of the harmful deviations against `d`, recompute gaps):
+
+| layer | gap along `d` (=\|diff\|) | gaps along PCs orthogonalized to `d` |
+|---|---|---|
+| 10 | 138.9 | [0,0,0,0,0,0,0,0] |
+| 12 | 209.3 | [0,0,0,0,0,0,0,0] |
+| 14 | 363.9 | [0,0,0,0,0,0,0,0] |
+
+(and raw PC1 gap ≈ `|diff|` at every layer — PC1 of the harmful deviations ≈ `d`, i.e. the mean direction
+dominates.) **So the refusal *mean* separation is exactly 1-dimensional; every direction orthogonal to `d`
+has zero class-gap and cannot increase separation → any subspace steering derived from harmful/harmless
+mean statistics is null by construction, and cannot beat single-direction steering.** This explains P0's
+M1≈D1 *structurally*, not just empirically. Closing route-around would require steering the *attack-specific*
+compliance directions, which are absent from class-mean statistics (finding them needs the attack ⇒ not a
+general defense). **Bottom line: single-direction refusal steering is the ceiling of statistical
+refusal-direction defenses — significant but partial (P0: 0.825→0.475 at ~20% benign cost), and
+fundamentally unable to close the route-around channel (P1/P2).**
+
+---
+## Summary of the clarity protocol
+| P | claim tested | outcome |
+|---|---|---|
+| P0 | subspace/dimensionality helps (pilot) | **REFUTED at n=40** (M1 0.650 ≮ D1 0.475); single-dir steer significant-but-partial (0.825→0.475, p=5e-4) at ~20% benign cost |
+| P1 | conclusion attack mediated by `d` | **EARNED, partial** (restore `d`→ kills 77%; suppress `d`→ makes 57%) |
+| P2 | route-around vs wash-out | **route-around** (high `d`-proj at all layers) |
+| P3 | "style inert" is a prefill artifact | **NO** — inline near-inert, style marginal ≈0 |
+| P4 | conclusion = recency/position | **NO** — semantics (directive-to-answer), position-independent |
+| P5 | dimensionality is the defense axis | **NULL by construction** (mean separation is 1-D) |
+| P6 | metric reliability / generalization | judge agreement 0.94; 2nd model blocked (GPU+format), documented |
+
+**Net:** the mechanism-correction core (instruction/conclusion > style; partial-`d` mediation; not
+recency; style-inert-not-artifact) is **solid** (survived every falsification). The defense story is
+**honestly demoted**: refusal-direction steering is a partial, benign-costly cost-raiser, not adaptively
+robust, and provably cannot be rescued by adding statistical directions. The publishable contribution is
+the **complete, honest arc** — correct a mechanism, derive a defense, adaptively break it, and show
+(mechanistically + structurally) why *that class* of defense is fundamentally limited.
 
 ## Artifacts
 - `scripts/mediation_test.py` → `$DATA_DIR/outputs/probe_gptoss/mediation_test.json`
